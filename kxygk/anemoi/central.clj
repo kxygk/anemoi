@@ -145,11 +145,11 @@
         below-cutoff (:below-index-threshold inputs)
         above-filt   #(and (> (:Above-Index %)
                               0.0)
-                           (> (:Above-Index %)
+                           (< (:Above-Index %)
                               above-cutoff))
         below-filt   #(and (> (:Below-Index %)
                               0.0)
-                           (> (:Below-Index %)
+                           (< (:Below-Index %)
                               below-cutoff))
         both-filt    #(or (above-filt %)
                           (below-filt %))]
