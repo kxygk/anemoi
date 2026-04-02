@@ -33,7 +33,7 @@
                       @*state
                       [::plot/rain-data]))
 
-
+#_
 (pco/defresolver $days-vs-d18O
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -43,6 +43,7 @@
                    :kxygk.dripsplit.tmd/y-key :d18O
                    :kxygk.dripsplit.tmd/table full-table}})
 
+#_
 (pco/defresolver $days-vs-rain
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -65,6 +66,7 @@
                       [{::days-vs-rain [:x
                                         :y]}]))
 
+#_
 (pco/defresolver $days-vs-index-above
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -79,6 +81,7 @@
     ::days-vs-index-above
     :y)
 
+#_
 (pco/defresolver $days-vs-index-below
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -91,7 +94,7 @@
                       @*state
                        [{::days-vs-index-below [:x :y]}]))
 
-
+#_
 (pco/defresolver $days-vs-above?
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -105,7 +108,7 @@
                       @*state
                        [{::days-vs-above? [:y]}]))
 
-
+#_
 (pco/defresolver $test-above
   [{::airport/keys [full-table]}]
   {::pco/input  [::airport/full-table]
@@ -132,11 +135,6 @@
   {::pco/input  [::airport/full-table
                  :above-index-threshold
                  :below-index-threshold
-                 ::days-vs-rain
-                 ::days-vs-d18O
-                 ::days-vs-above?
-                 ::days-vs-index-above
-                 ::days-vs-index-below
                  ::cycle-start-value
                  ::cycle-length
                  ::cycle-phase]
@@ -422,24 +420,6 @@
 
 
 
-;; Plot requirements
-#_
-[rain-datavec
- monsoon-winter-datavec
- monsoon-summer-datavec
- missing-days-datavec
- d18O-datavec
- stat-rain-weighted-d18O
- stat-rain-weighted-d18O-above
- stat-rain-weighted-d18O-below
- stat-index-weighted-d18O-above
- stat-index-weighted-d18O-below
- cycle-start-value
- cycle-length
- cycle-phase
- data-span-days
- climate-index-max]
-
 (def plan-cache*
   (atom {}))
 
@@ -461,78 +441,8 @@
                      (pbir/equivalence-resolver ::airport/end-date
                                                 ::end-date)
                      plot/env
-                     $days-vs-d18O
-                     $days-vs-rain
-                     $days-vs-index-above
-                     $days-vs-index-below
-                     $days-vs-above?
-                     $test-above ;;remove
                      $single-figures
-                     $rain-monsoon-figure
-                     #_
-                     $days-vs-rain-figure])
+                     $rain-monsoon-figure])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
 
-
-
-
-
-
-;; OLD STUFF FOR REFERENCE
-
-
-#_
-(pco/defresolver user-by-id
-  [{::keys [id]}]        ; INPUTS
-  {::pco/input  [::id]
-   ::pco/output [::name  ; OUTPUTS
-                 ::email
-                 ::birthday]}
-  ;; we'll run this on a thread in the background
-  (p/vthread (do (println (str "Going in to the DB and getting user: "
-                               id))
-                 (Thread/sleep 2345)
-                 (get user-db
-                      id))))
-
-;; Resolvers can be executed like a function.
-;; However,
-;; this is effectively only useful during testing
-;; (normal, non-threaded resolvers can be chained in pipelines as well)
-#_@(user-by-id {::id 1})
-;; {:name "Alice", :email "alice@example.com", :birthday "1989-10-25"}
-
-#_
-(pco/defresolver birth-year
-  [{::keys [birthday]}]
-  {::pco/input  [::birthday]
-   ;; ::pco/cache-store ::my-cache   ; you can also designate a cache (memoization)
-   ::pco/output [::birth-year]}
-  (p/vthread (do (println (str "Extracting a Birth Year from the BDay: "
-                               birthday))
-                 (Thread/sleep 3141)
-                 {::birth-year (-> birthday
-                                   (clojure.string/split #"-")
-                                   first)})))
-#_
-@(birth-year {::birthday "2012-12-12"})
-
-#_#_
-(defonce plan-cache*
-  (atom {}))
-
-(def env
-  (-> (pci/register {::p.a.eql/parallel? true}
-                    [user-by-id
-                     birth-year])
-      (pcp/with-plan-cache plan-cache*)
-      kxygk.pathmore.cache/inject-for-all-resolvers))
-#_
-@(p.a.eql/process env
-                 {::id 2} ;; input map
-                 [::birth-year])
-#_
-@(p.a.eql/process env
-                 {::id 2} ;; input map
-                 [::id])
