@@ -8,6 +8,7 @@
             [com.wsscode.pathom3.interface.smart-map :as psm]
             [com.wsscode.pathom3.connect.planner :as pcp]
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
+            [promesa.core :as p]
             [tock]
             [tick.core                    :as tick]
             [tick.locale-en-us]
@@ -28,42 +29,42 @@
 
 (pco/defresolver $days-min-max
   [{::keys [rain-data]}]
-  {::pco/input [{::rain-data [:x]}] ;; day
+  {::pco/input  [{::rain-data [:x]}] ;; day
    ::pco/output [::day-num-min
                  ::day-num-max]}
-  {::day-num-min 0
-   ::day-num-max (->> rain-data
-                      :x
-                      :data-vec
-                      (apply max))})
+  (p/vthread {::day-num-min 0
+              ::day-num-max (->> rain-data
+                                 :x
+                                 :data-vec
+                                 (apply max))}))
 
 (pco/defresolver $rain-min-max
   [{::keys [rain-data]}]
-  {::pco/input [{::rain-data [:y]}] ;; mm of rain
+  {::pco/input  [{::rain-data [:y]}] ;; mm of rain
    ::pco/output [::rain-min
                  ::rain-max]}
-  {::rain-min 0.0
-   ::rain-max (->> rain-data
-                   :y
-                   :data-vec
-                   (filterv some?)
-                   (apply max))})
+  (p/vthread {::rain-min 0.0
+              ::rain-max (->> rain-data
+                              :y
+                              :data-vec
+                              (filterv some?)
+                              (apply max))}))
 
 
 (pco/defresolver $index-max
   [{::keys [index-above
             index-below]}]
-  {::pco/input [{::index-above [:y]}
-                {::index-below [:y]}] ;; day
+  {::pco/input  [{::index-above [:y]}
+                 {::index-below [:y]}] ;; day
    ::pco/output [::index-max]}
-  {::index-max (max (->> index-above
-                         :y
-                         :data-vec
-                         (apply max))
-                    (->> index-below
-                         :y
-                         :data-vec
-                         (apply max)))})
+  (p/vthread {::index-max (max (->> index-above
+                                    :y
+                                    :data-vec
+                                    (apply max))
+                               (->> index-below
+                                    :y
+                                    :data-vec
+                                    (apply max)))}))
 
 
 #_
@@ -95,7 +96,7 @@
             rain-min
             rain-max]}]
   {::pco/output [::rain-axis]}
-  {::rain-axis (-> (quickthing/primary-axis [[day-num-min
+    (p/vthread {::rain-axis (-> (quickthing/primary-axis [[day-num-min
                                               rain-min]
                                              [day-num-max
                                               rain-max]]
@@ -112,7 +113,7 @@
                              false)
                    (assoc-in [:y-axis
                               :visible]
-                             true))})
+                             true))}))
 
 (pco/defresolver $d18O-axis
   [{::keys [width
@@ -135,7 +136,7 @@
                  ::day-num-min
                  ::day-num-max]
    ::pco/output [::d18O-axis]}
-  {::d18O-axis (-> (quickthing/secondary-axis [[day-num-min
+   (p/vthread  {::d18O-axis (-> (quickthing/secondary-axis [[day-num-min
                                                 (-> d18O-rain
                                                     :x
                                                     ::stat/min
@@ -160,7 +161,7 @@
                              false) ;; can also be made on..
                    (assoc-in [:y-axis
                               :visible]
-                             true))})
+                             true))}))
 
 (pco/defresolver $index-axis
   [{::keys [width
@@ -175,7 +176,7 @@
             cycle-length
             cycle-phase]}]
   {::pco/output [::index-axis]}
-  {::index-axis (-> (quickthing/primary-axis [[day-num-min
+   (p/vthread  {::index-axis (-> (quickthing/primary-axis [[day-num-min
                                                0.0] ;; index min is always zero
                                               [day-num-max
                                                index-max]]
@@ -199,7 +200,7 @@
                               false)
                     (assoc-in [:y-axis
                                :visible]
-                              false))})
+                              false))}))
 
 (pco/defresolver $grid-layer
   [{::keys [width
@@ -212,7 +213,7 @@
             cycle-length
             cycle-phase]}]
   {::pco/output [::grid-layer]}
-  {::grid-layer (-> (quickthing/primary-axis [[day-num-min
+  (p/vthread   {::grid-layer (-> (quickthing/primary-axis [[day-num-min
                                                0.0]
                                               [day-num-max
                                                1.0]]
@@ -241,7 +242,7 @@
                     (assoc-in [:y-axis
                                :major]
                               [])
-                    viz/svg-plot2d-cartesian)})
+                    viz/svg-plot2d-cartesian)}))
 
 
 (pco/defresolver $rain-layer
@@ -256,7 +257,7 @@
                 ::day-num-min
                 ::day-num-max]
    ::pco/output [::rain-layer]}
-   {::rain-layer (-> rain-axis
+   (p/vthread   {::rain-layer (-> rain-axis
                     (update :data
                             #(into %
                                    (quickthing/bars (:xy-nonil rain-data)
@@ -272,7 +273,7 @@
                                                                     coord)))
                                                        {:scale   6
                                                         :attribs {:fill "#f00"}})))
-                    viz/svg-plot2d-cartesian)})
+                    viz/svg-plot2d-cartesian)}))
 
 (pco/defresolver $d18O-layer
   [{::keys [d18O-data
@@ -286,7 +287,7 @@
                 ::day-num-min
                 ::day-num-max]
    ::pco/output [::d18O-layer]}
-  {::d18O-layer (-> d18O-axis
+  (p/vthread   {::d18O-layer (-> d18O-axis
                     (update :data
                             #(into %
                                    (quickthing/circles (->> (:xy-nonil d18O-data)
@@ -298,7 +299,7 @@
                                                                                      {:fill "#33ff"}))))))
                                                        {:scale   10
                                                         :attribs {:fill "#33ff"}})))
-                    viz/svg-plot2d-cartesian)})
+                    viz/svg-plot2d-cartesian)}))
 
 
 (pco/defresolver $d18O-classified-layer ;; reuse resolver
@@ -312,7 +313,7 @@
                  ::width
                  ::d18O-axis] ;;
    ::pco/output [::d18O-classified-layer]}
-  {::d18O-classified-layer (-> d18O-axis
+   (p/vthread  {::d18O-classified-layer (-> d18O-axis
                                (update :data
                                        #(into %
                                               (quickthing/circles (->> d18O-above-data
@@ -325,7 +326,7 @@
                                                                        :xy-nonil)
                                                                   {:scale   10
                                                                    :attribs {:fill winter-color}})))
-                               viz/svg-plot2d-cartesian)})
+                               viz/svg-plot2d-cartesian)}))
 
 (pco/defresolver $d18O-averages-layer
   [{::keys [d18O-axis
@@ -355,7 +356,7 @@
    ::pco/output [::d18O-total-average-layer
                  ::d18O-above-average-layer
                  ::d18O-below-average-layer]}
-  (let [d18O-total-mean (-> d18O-rain
+   (p/vthread  (let [d18O-total-mean (-> d18O-rain
                             ::stat/weighted-mean
                             #_#_
                             :y
@@ -456,7 +457,7 @@
                                                                            :font-size         static-font-size
                                                                            #_#_
                                                                            :dominant-baseline "hanging"}]])))
-                                      viz/svg-plot2d-cartesian)})))
+                                      viz/svg-plot2d-cartesian)}))))
 
 (pco/defresolver $index-layer
   [{::keys [index-above
@@ -472,7 +473,7 @@
                  ::day-num-min
                  ::day-num-max]
    ::pco/output [::index-layer]}
-  {::index-layer (-> index-axis
+   (p/vthread  {::index-layer (-> index-axis
                      (update :data
                              #(into %
                                     (quickthing/bars (:xy-nonil index-below)
@@ -487,13 +488,13 @@
                                                                                  (- day-num-min
                                                                                     day-num-max))
                                                                 :stroke       summer-color}})))
-                     viz/svg-plot2d-cartesian)})
+                     viz/svg-plot2d-cartesian)}))
 
 (pco/defresolver $hiccup2svg
   [{::keys [hiccup]}]
   {::pco/output [::svg]}
-  {::svg (-> hiccup
-             quickthing/svg2xml)})
+   (p/vthread  {::svg (-> hiccup
+             quickthing/svg2xml)}))
 
 (pco/defresolver $rain-subplot
   [{::keys [width
@@ -506,7 +507,7 @@
             d18O-below-average-layer
             rain-layer]}]
   {::pco/output [{::rain-subplot [::hiccup]}]}
-  {::rain-subplot {::hiccup (-> (svg/group {}
+  (p/vthread   {::rain-subplot {::hiccup (-> (svg/group {}
                                            grid-layer
                                            #_#_#_#_
                                            d18O-classified-layer
@@ -516,7 +517,7 @@
                                            rain-layer)
                         (quickthing/svg-wrap [width
                                               height]
-                                             width))}})
+                                             width))}}))
 
 (pco/defresolver $rain-d18O-subplot
   [{::keys [width
@@ -524,12 +525,12 @@
             d18O-layer
             rain-subplot]}]
   {::pco/output [{::rain-d18O-subplot [::hiccup]}]}
-  {::rain-d18O-subplot {::hiccup (-> (svg/group {}
+    (p/vthread {::rain-d18O-subplot {::hiccup (-> (svg/group {}
                                                 (::hiccup rain-subplot)
                                                 d18O-layer)
                                      (quickthing/svg-wrap [width
                                                            height]
-                                                          width))}})
+                                                          width))}}))
 
 
 (pco/defresolver $rain-d18O-average-subplot
@@ -538,12 +539,12 @@
             rain-d18O-subplot
             d18O-total-average-layer]}]
   {::pco/output [{::rain-d18O-average-subplot [::hiccup]}]}
-  {::rain-d18O-average-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::rain-d18O-average-subplot {::hiccup (-> (svg/group {}
                                                         (::hiccup rain-d18O-subplot)
                                                         d18O-total-average-layer)
                                              (quickthing/svg-wrap [width
                                                                    height]
-                                                                  width))}})
+                                                                  width))}}))
 
 (pco/defresolver $rain-d18O-classified-subplot
   [{::keys [width
@@ -551,12 +552,12 @@
             d18O-classified-layer
             rain-subplot]}]
   {::pco/output [{::rain-d18O-classified-subplot [::hiccup]}]}
-  {::rain-d18O-classified-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::rain-d18O-classified-subplot {::hiccup (-> (svg/group {}
                                                 (::hiccup rain-subplot)
                                                 d18O-classified-layer)
                                      (quickthing/svg-wrap [width
                                                            height]
-                                                          width))}})
+                                                          width))}}))
 
 
 
@@ -567,13 +568,13 @@
             d18O-above-average-layer
             d18O-below-average-layer]}]
   {::pco/output [{::rain-d18O-classified-average-subplot [::hiccup]}]}
-  {::rain-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::rain-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
                                                                    (::hiccup rain-d18O-classified-subplot)
                                                                    d18O-above-average-layer
                                                                    d18O-below-average-layer)
                                                         (quickthing/svg-wrap [width
                                                                               height]
-                                                                             width))}})
+                                                                             width))}}))
 
 
 (pco/defresolver $index-subplot
@@ -582,12 +583,12 @@
             grid-layer
             index-layer]}]
   {::pco/output [{::index-subplot [::hiccup]}]}
-  {::index-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::index-subplot {::hiccup (-> (svg/group {}
                                    grid-layer
                                    index-layer)
                         (quickthing/svg-wrap [width
                                               height]
-                                             width))}})
+                                             width))}}))
 
 (pco/defresolver $rain-d18O-index-2stack
   [{::keys [width
@@ -609,12 +610,12 @@
             rain-d18O-classified-subplot
             index-subplot]}]
   {::pco/output [{::rain-d18O-classified-index-2stack [::hiccup]}]}
-  {::rain-d18O-classified-index-2stack {::hiccup (-> (quickthing/group-plots-grid [[(::hiccup rain-d18O-classified-subplot)]
+   (p/vthread  {::rain-d18O-classified-index-2stack {::hiccup (-> (quickthing/group-plots-grid [[(::hiccup rain-d18O-classified-subplot)]
                                                                                    [(::hiccup index-subplot)]])
                                                      (quickthing/svg-wrap [width
                                                                            (* 2.0
                                                                               height)]
-                                                                          width))}})
+                                                                          width))}}))
 
 (pco/defresolver $hist-count-all-subplot
   [{::keys [width
@@ -634,7 +635,7 @@
                                                   {:y [::stat/max]}]}
                                     ::stat/max]}]}]
    ::pco/output [{::hist-count-all-subplot [::hiccup]}]}
-  {::hist-count-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+   (p/vthread  {::hist-count-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                        0.0]
                                                                       [d18O-range-max
                                                                        (-> d18O-rain
@@ -676,7 +677,7 @@
                                             viz/svg-plot2d-cartesian
                                             (quickthing/svg-wrap [width
                                                        height]
-                                                      width))}})
+                                                      width))}}))
 
 (pco/defresolver $hist-count-classified-subplot
 [{::keys [width
@@ -702,7 +703,7 @@
                  {::d18O-rain-below [{:x [{::stat/hist [:xy-nonil]}
                                           ::stat/max]}]}]
    ::pco/output [{::hist-count-classified-subplot [::hiccup]}]}
-  {::hist-count-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+   (p/vthread  {::hist-count-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                              0.0]
                                                             [d18O-range-max
                                                              (-> d18O-rain
@@ -764,7 +765,7 @@
                                        viz/svg-plot2d-cartesian
                                        (quickthing/svg-wrap [width
                                                              height]
-                                                            width))}})
+                                                            width))}}))
 
 
 (pco/defresolver $hist-count-subplot
@@ -775,12 +776,12 @@
   {::pco/input [::hist-count-all-subplot
                 ::hist-count-classified-subplot]
    ::pco/output [::hist-count-subplot]}
-  {::hist-count-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::hist-count-subplot {::hiccup (-> (svg/group {}
                                                  (::hiccup hist-count-all-subplot)
                                                  (::hiccup hist-count-classified-subplot))
                                       (quickthing/svg-wrap [width
                                                             height]
-                                                           width))}})
+                                                           width))}}))
 
 ;; Rain weighted histogram
 
@@ -805,7 +806,7 @@
                                              {:y [::stat/max]}]}
                                {:x [::stat/max]}]}]
    ::pco/output [{::hist-rain-all-subplot [::hiccup]}]}
-  {::hist-rain-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+   (p/vthread  {::hist-rain-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                        0.0]
                                                                       [d18O-range-max
                                                                        (-> d18O-rain
@@ -845,7 +846,7 @@
                                             viz/svg-plot2d-cartesian
                                             (quickthing/svg-wrap [width
                                                        height]
-                                                      width))}})
+                                                      width))}}))
 
 (pco/defresolver $hist-rain-classified-subplot
 [{::keys [width
@@ -871,7 +872,7 @@
                  {::d18O-rain-below [{::stat/hist [:xy-nonil]}
                                      {:x [::stat/max]}]}]
    ::pco/output [{::hist-rain-classified-subplot [::hiccup]}]}
-  {::hist-rain-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+   (p/vthread  {::hist-rain-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                              0.0]
                                                             [d18O-range-max
                                                              (-> d18O-rain
@@ -930,7 +931,7 @@
                                        viz/svg-plot2d-cartesian
                                        (quickthing/svg-wrap [width
                                                              height]
-                                                            width))}})
+                                                            width))}}))
 
 
 (pco/defresolver $hist-rain-subplot
@@ -941,12 +942,12 @@
   {::pco/input [::hist-rain-all-subplot
                 ::hist-rain-classified-subplot]
    ::pco/output [::hist-rain-subplot]}
-  {::hist-rain-subplot {::hiccup (-> (svg/group {}
+   (p/vthread  {::hist-rain-subplot {::hiccup (-> (svg/group {}
                                                  (::hiccup hist-rain-all-subplot)
                                                  (::hiccup hist-rain-classified-subplot))
                                       (quickthing/svg-wrap [width
                                                             height]
-                                                           width))}})
+                                                           width))}}))
 
 
 
@@ -972,7 +973,7 @@
                                                       {:y [::stat/max]}]}
                                      {:x [::stat/max]}]}]
    ::pco/output [{::hist-monsoon-classified-subplot [::hiccup]}]}
-  {::hist-monsoon-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+   (p/vthread  {::hist-monsoon-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                              0.0]
                                                             [d18O-range-max
                                                              (max (-> d18O-monsoon-above
@@ -1035,7 +1036,7 @@
                                        viz/svg-plot2d-cartesian
                                        (quickthing/svg-wrap [width
                                                              height]
-                                                            width))}})
+                                                            width))}}))
 
 
 
