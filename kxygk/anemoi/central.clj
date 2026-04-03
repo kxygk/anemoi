@@ -4,6 +4,7 @@
             [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd :as tmd]
             kxygk.pathmore.cache
+            [criterium.core :refer [bench]]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
@@ -213,31 +214,30 @@
                        ::plot/cycle-phase        (::cycle-phase inputs)}}))
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
-                                    {::plot/index-subplot [::plot/svg]}
-                                    {::plot/rain-d18O-subplot [::plot/svg]}
-                                    {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                    {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                    {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                    {::plot/hist-count-all-subplot [::plot/svg]}
-                                    {::plot/hist-count-classified-subplot [::plot/svg]}
-                                    {::plot/hist-count-subplot [::plot/svg]}
-                                    {::plot/hist-rain-all-subplot [::plot/svg]}
-                                    {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                    {::plot/hist-rain-subplot [::plot/svg]}
-                                    {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
-                (p.a.eql/process env
-                                 @*state)
-                deref
-                ::single-figures)]
-  (->> figs
-       (mapv (fn [[key
-                   value]]
-               (->> value
-                    ::plot/svg
-                    (spit (str "./out/all-"
-                               (name key)
-                               ".svg")))))))
-
+                                        {::plot/index-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                        {::plot/hist-count-all-subplot [::plot/svg]}
+                                        {::plot/hist-count-classified-subplot [::plot/svg]}
+                                        {::plot/hist-count-subplot [::plot/svg]}
+                                        {::plot/hist-rain-all-subplot [::plot/svg]}
+                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                        {::plot/hist-rain-subplot [::plot/svg]}
+                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
+                    (p.a.eql/process env
+                                     @*state)
+                    deref
+                    ::single-figures)]
+      (->> figs
+           (mapv (fn [[key
+                       value]]
+                   (->> value
+                        ::plot/svg
+                        (spit (str "./out/all-"
+                                   (name key)
+                                   ".svg")))))))
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
                                     {::plot/index-subplot [::plot/svg]}
@@ -446,3 +446,57 @@
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
 
+
+
+(-> (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
+                                        {::plot/index-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                        {::plot/hist-count-all-subplot [::plot/svg]}
+                                        {::plot/hist-count-classified-subplot [::plot/svg]}
+                                        {::plot/hist-count-subplot [::plot/svg]}
+                                        {::plot/hist-rain-all-subplot [::plot/svg]}
+                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                        {::plot/hist-rain-subplot [::plot/svg]}
+                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
+                    (p.a.eql/process env
+                                     @*state)
+                    deref
+                    ::single-figures)]
+      (->> figs
+           (mapv (fn [[key
+                       value]]
+                   (->> value
+                        ::plot/svg
+                        #_
+                        (spit (str "./out/all-"
+                                   (name key)
+                                   ".svg")))))))
+    with-out-str
+    bench)
+;; Evaluation count : 120 in 60 samples of 2 calls.
+;;              Execution time mean : 581.320123 ms
+;;     Execution time std-deviation : 47.226751 ms
+;;    Execution time lower quantile : 507.845698 ms ( 2.5%)
+;;    Execution time upper quantile : 668.803132 ms (97.5%)
+;;                    Overhead used : 12.174187 ns
+
+;; Found 2 outliers in 60 samples (3.3333 %)
+;; 	low-severe	 1 (1.6667 %)
+;; 	low-mild	 1 (1.6667 %)
+;;  Variance from outliers : 60.1662 % Variance is severely inflated by outliers
+
+
+;; After threading `plot`
+;; Evaluation count : 180 in 60 samples of 3 calls.
+;;              Execution time mean : 494.456310 ms
+;;     Execution time std-deviation : 35.742829 ms
+;;    Execution time lower quantile : 434.094657 ms ( 2.5%)
+;;    Execution time upper quantile : 574.932220 ms (97.5%)
+;;                    Overhead used : 9.814428 ns
+
+;; Found 2 outliers in 60 samples (3.3333 %)
+;; 	low-severe	 2 (3.3333 %)
+;;  Variance from outliers : 53.4924 % Variance is severely inflated by outliers

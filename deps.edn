@@ -8,6 +8,7 @@
          kxygk/tock                  {:local/root "../tock"}
          kxygk/quickthing            {:local/root "../quickthing"}
          ;;
+         criterium/criterium         {:mvn/version "0.4.6"}
          tick/tick                   {:mvn/version "0.7.5"}
          techascent/tech.ml.dataset  {:mvn/version "7.023"}
          dk.ative/docjure            {:mvn/version "1.21.0"}
