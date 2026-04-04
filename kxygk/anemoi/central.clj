@@ -242,22 +242,6 @@
                                ".svg")))))))
 
 
-;; print data tables
-#_
-(let [{::airport/keys [full-table
-                       above-table
-                       below-table]} (->> [::airport/full-table
-                                           ::airport/above-table
-                                           ::airport/below-table]
-                                          (p.a.eql/process env
-                                                           @*state)
-                                          deref) ]
-  (tech.v3.dataset/write! full-table
-                          "full-table.txt")
-  (tech.v3.dataset/write! above-table
-                          "above-table.txt")
-  (tech.v3.dataset/write! below-table
-                          "below-table.txt"))
 
 #_
 (->> [{::rain-monsoon-figure [{::plot/rain-subplot [::plot/svg]}]}]
@@ -337,6 +321,22 @@
                      $rain-monsoon-figure])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
+
+;; PRINT TABLES TO FILES
+(let [{::airport/keys [full-table
+                       above-table
+                       below-table]} (->> [::airport/full-table
+                                           ::airport/above-table
+                                           ::airport/below-table]
+                                          (p.a.eql/process env
+                                                           @*state)
+                                          deref) ]
+  (tech.v3.dataset/write! full-table
+                          "full-table.txt")
+  (tech.v3.dataset/write! above-table
+                          "above-table.txt")
+  (tech.v3.dataset/write! below-table
+                          "below-table.txt"))
 
 
 
