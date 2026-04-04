@@ -34,103 +34,6 @@
                       @*state
                       [::plot/rain-data]))
 
-#_
-(pco/defresolver $days-vs-d18O
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [{::days-vs-d18O [:x
-                                  :y]}]}
-  {::days-vs-d18O {:kxygk.dripsplit.tmd/x-key :Day
-                   :kxygk.dripsplit.tmd/y-key :d18O
-                   :kxygk.dripsplit.tmd/table full-table}})
-
-#_
-(pco/defresolver $days-vs-rain
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [::days-vs-rain]}
-  {::days-vs-rain {:kxygk.dripsplit.tmd/x-key :Day
-                   :kxygk.dripsplit.tmd/y-key :Rain-mm
-                   :kxygk.dripsplit.tmd/table full-table}})
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                       [{::days-vs-d18O [:xy-nonil]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::days-vs-d18O [:y]}
-                       {::days-vs-rain [:y]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::days-vs-rain [:x
-                                        :y]}]))
-
-#_
-(pco/defresolver $days-vs-index-above
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [::days-vs-index-above]}
-  {::days-vs-index-above {:kxygk.dripsplit.tmd/x-key :Day
-                          :kxygk.dripsplit.tmd/y-key :Above-Index
-                          :kxygk.dripsplit.tmd/table full-table}})
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::days-vs-index-above [:x :y]}])
-    ::days-vs-index-above
-    :y)
-
-#_
-(pco/defresolver $days-vs-index-below
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [::days-vs-index-below]}
-  {::days-vs-index-below {:kxygk.dripsplit.tmd/x-key :Day
-                          :kxygk.dripsplit.tmd/y-key :Below-Index
-                          :kxygk.dripsplit.tmd/table full-table}})
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                       [{::days-vs-index-below [:x :y]}]))
-
-#_
-(pco/defresolver $days-vs-above?
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [{::days-vs-above? [:x
-                                    :y]}]}
-  {::days-vs-above? {:kxygk.dripsplit.tmd/x-key :Day
-                     :kxygk.dripsplit.tmd/y-key :Above?
-                     :kxygk.dripsplit.tmd/table full-table}})
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                       [{::days-vs-above? [:y]}]))
-
-#_
-(pco/defresolver $test-above
-  [{::airport/keys [full-table]}]
-  {::pco/input  [::airport/full-table]
-   ::pco/output [::test-above]}
-  {::test-above {::tmd/table-to-filter full-table
-                 ::tmd/col-filter-fn :Above?}})
- 
-#_
-(->> [::test-above]
-     (p.a.eql/process env
-                      @*state)
-     deref
-     ::test-above
-     keys)
-#_
-(->> [{::test-above [::tmd/table]}]
-     (p.a.eql/process env
-                      @*state)
-     deref
-     ::test-above)
-
 (pco/defresolver $single-figures
   [inputs]
   {::pco/input  [::airport/full-table
@@ -273,17 +176,6 @@
                       @*state)
      deref
      ::timeseries-figure)
-
-
-#_
-(->> [{::timeseries-figure [{::plot/d18O-rain-above [::tmd/table]}]}]
-     (p.a.eql/process env
-                      @*state)
-     deref
-     ::timeseries-figure)
-
-
-
 #_
 (->> [{::timeseries-figure [{::plot/d18O-data [{:y [{::stat/hist [{:y [::stat/max]}]}]}]}]}]
      (p.a.eql/process env
