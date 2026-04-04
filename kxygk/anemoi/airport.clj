@@ -255,39 +255,42 @@
     ::climate-index-table
     ds/column-names)
 
+
+;; TODO Table stuff can be spead up significantly if I use `ds/set-index`
+;; The `:Days` column can be the index in some tables
+;; This allows faster joins and stuff
 (pco/defresolver $full-table
   [{::keys [climate-index-table
             enso-table
             isotopes-table]}]
-  {::pco/output [::full-table [:Date
-                               :Above-Index
-                               :Below-Index
-                               :Rain-mm
-                               :d18O
-                               :dD
-                               :Comment
-                               :D-excess]]}
-  (p/vthread {::full-table (-> (tech.v3.dataset.join/left-join :Date
-                                                               climate-index-table
-                                                               isotopes-table)
-                               (ds/row-map (fn [row-day]
-                                             (let [year  (tick/year (row-day :Date))
-                                                   month (tick/month (row-day :Date))]
-                                               {:Above? (not (zero? (row-day :Above-Index)))
-                                                :ENSO   (-> enso-table
-                                                             (ds/filter-column :Month #(= %
-                                                                                           month))
-                                                             (ds/filter-column :Year #(= %
-                                                                                          year))
-                                                             ds/rows
-                                                             first
-                                                             (get "EnsoIndex"))})))
-                               (ds/sort-by-column :Date)
-                               (assoc :Day
-                                      (range 1
-                                             (-> climate-index-table
-                                                 ds/row-count
-                                                 inc))))}))
+  {::pco/output [::full-table]} ;; simplified for brevity
+  (p/vthread {::full-table (let [with-index  (tech.v3.dataset.join/left-join :Date
+                                                                             climate-index-table
+                                                                             isotopes-table)
+                                 with-extras (ds/row-map with-index
+                                                         (fn [row]
+                                                           {:Year   (-> row
+                                                                        :Date
+                                                                        tick/year)
+                                                            :Month  (-> row
+                                                                        :Date
+                                                                        tick/month)
+                                                            :Above? (-> row
+                                                                        :Above-Index
+                                                                        zero?
+                                                                        not)}))
+                                 with-enso   (-> (tech.v3.dataset.join/left-join [:Year
+                                                                                  :Month]
+                                                                                 with-extras
+                                                                                 enso-table)
+                                                 (ds/rename-columns {"EnsoIndex" :ENSO})
+                                                 (ds/sort-by-column :Date))]
+                             (assoc with-enso
+                                    :Day
+                                    (range 1
+                                           (-> with-enso
+                                               ds/row-count
+                                               inc))))}))
 #_
 (-> @(p.a.eql/process env
                       @central/*state
