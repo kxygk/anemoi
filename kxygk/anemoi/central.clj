@@ -4,7 +4,10 @@
             [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd :as tmd]
             kxygk.pathmore.cache
+            ;;
             [criterium.core :refer [bench]]
+            [clj-async-profiler.core :as prof]
+            ;;
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
@@ -339,35 +342,39 @@
                           "below-table.txt"))
 
 
+;; PROFILING
+;; Current issue is that if you profile the wall time,
+;; the code is spawning so many threads that 2/3rd of the time is spent sitting aroundw waiting on locks.
+;; Likely issue is TMD spawning VThreads and Pathom spawning it's own thread pool
+;; see: https://github.com/techascent/tech.ml.dataset/issues/475
+;; Performance is a non-issue for this project,
+;; so this is on the backburner..
+#_
+(prof/profile {:event :wall} ;; this flag makes the flamegraph capture wall time and shows waiting for threads
+  (bench (with-out-str (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
+                                                           {::plot/index-subplot [::plot/svg]}
+                                                           {::plot/rain-d18O-subplot [::plot/svg]}
+                                                           {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                                           {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                                           {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                                           {::plot/hist-count-all-subplot [::plot/svg]}
+                                                           {::plot/hist-count-classified-subplot [::plot/svg]}
+                                                           {::plot/hist-count-subplot [::plot/svg]}
+                                                           {::plot/hist-rain-all-subplot [::plot/svg]}
+                                                           {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                                           {::plot/hist-rain-subplot [::plot/svg]}
+                                                           {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
+                                       (p.a.eql/process env
+                                                        @*state)
+                                       deref
+                                       ::single-figures)]
+                         (->> figs
+                              (mapv (fn [[key
+                                          value]]
+                                      (->> value
+                                           ::plot/svg))))))))
 
-(-> (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
-                                        {::plot/index-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                        {::plot/hist-count-all-subplot [::plot/svg]}
-                                        {::plot/hist-count-classified-subplot [::plot/svg]}
-                                        {::plot/hist-count-subplot [::plot/svg]}
-                                        {::plot/hist-rain-all-subplot [::plot/svg]}
-                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                        {::plot/hist-rain-subplot [::plot/svg]}
-                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
-                    (p.a.eql/process env
-                                     @*state)
-                    deref
-                    ::single-figures)]
-      (->> figs
-           (mapv (fn [[key
-                       value]]
-                   (->> value
-                        ::plot/svg
-                        #_
-                        (spit (str "./out/all-"
-                                   (name key)
-                                   ".svg")))))))
-    with-out-str
-    bench)
+
 ;; Evaluation count : 120 in 60 samples of 2 calls.
 ;;              Execution time mean : 581.320123 ms
 ;;     Execution time std-deviation : 47.226751 ms
