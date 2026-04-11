@@ -128,6 +128,15 @@
     ::problematic-dates)
 ;; #{#time/date "2019-01-03" #time/date "2012-04-04" #time/date "2012-05-05" #time/date "2012-06-05" #time/date "2012-09-05" #time/date "2015-09-05" #time/date "2014-09-06" #time/date "2020-04-08" #time/date "2015-12-08" #time/date "2015-07-09" #time/date "2014-12-09" #time/date "2023-10-10" #time/date "2010-10-15" #time/date "2018-10-16" #time/date "2020-09-18" #time/date "2019-10-22" #time/date "2012-05-24" #time/date "2012-02-25" #time/date "2023-11-25" #time/date "2019-12-25" #time/date "2020-04-26" #time/date "2021-11-27" #time/date "2021-06-29" #time/date "2022-09-29" #time/date "2020-10-29"}
 
+(def atan8
+  (clojure.math/atan 8))
+
+(def cos-atan8
+  (clojure.math/cos atan8))
+
+(def sin-atan8
+  (clojure.math/sin atan8))
+
 (pco/defresolver $isotopes-table 
   [{::keys [isotopes-raw
             crazy-dates
@@ -162,13 +171,23 @@
                                                    :float64)
                                    (ds/row-map (fn [row-day]
                                                  (let [d18O (row-day :d18O)
-                                                       dD   (row-day :dD)]
+                                                       dD   (row-day :dD)
+                                                       atan8 (clojure.math/atan 8)
+                                                       cos-atan8 (clojure.math/cos atan8)]
                                                    (if (or (nil? d18O)
                                                            (nil? dD))
                                                      nil
+                                                     (let [on-gmwl (+ (* cos-atan8
+                                                                         d18O)
+                                                                      (* sin-atan8
+                                                                         (- dD
+                                                                            10)))]
                                                      {:D-excess (- dD
                                                                    (* 8.0
-                                                                      d18O))})))))}))
+                                                                      d18O))
+                                                      :GMWL-proj on-gmwl
+                                                      :GMWL-d18O (* on-gmwl
+                                                                    cos-atan8)}))))))}))
 #_
 (-> @(p.a.eql/process env
                       @central/*state

@@ -186,6 +186,114 @@
      deref
      ::timeseries-figure)
 
+(pco/defresolver $single-gmwl-figures
+  [inputs]
+  {::pco/input  [::airport/full-table
+                 :above-index-threshold
+                 :below-index-threshold
+                 ::cycle-start-value
+                 ::cycle-length
+                 ::cycle-phase]
+   ::pco/output [::single-gmwl-figures]}
+  (let [above-cutoff (:above-index-threshold inputs)
+        below-cutoff (:below-index-threshold inputs)
+        above-filt   #(and (> (:Above-Index %)
+                              0.0)
+                           (< (:Above-Index %)
+                              above-cutoff))
+        below-filt   #(and (> (:Below-Index %)
+                              0.0)
+                           (< (:Below-Index %)
+                              below-cutoff))
+        both-filt    #(or (above-filt %)
+                          (below-filt %))]
+    {::single-gmwl-figures {
+                       ::plot/width              1800
+                       ::plot/height             1300 ;;650
+                       ::plot/scale              100
+                       ::plot/margin-frac        0.1
+                       ;;
+                       ::plot/d18O-rain          {::tmd/x-key           :GMWL-d18O
+                                                  ::tmd/y-key           :Rain-mm
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   both-filt}
+                       ::plot/rain-data          {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :Rain-mm
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   both-filt}
+                       ::plot/d18O-data          {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :GMWL-d18O
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   both-filt}
+                       ::plot/d18O-above-data    {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :GMWL-d18O
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-below-data    {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :GMWL-d18O
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   below-filt}
+                       ::plot/d18O-rain-above    {::tmd/x-key           :GMWL-d18O
+                                                  ::tmd/y-key           :Rain-mm
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-rain-below    {::tmd/x-key           :GMWL-d18O
+                                                  ::tmd/y-key           :Rain-mm
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   below-filt}
+                       ;;
+                       ;; d18O vs Monsoon
+                       ::plot/d18O-monsoon-above {::tmd/x-key           :GMWL-d18O
+                                                  ::tmd/y-key           :Above-Index
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-monsoon-below {::tmd/x-key           :GMWL-d18O
+                                                  ::tmd/y-key           :Below-Index
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   below-filt}
+                       ::plot/d18O-range-min     -25
+                       ::plot/d18O-range-max     10
+                       ::plot/above?-data        {::tmd/x-key :GMWL-d18O
+                                                  ::tmd/y-key :Above?
+                                                  ::tmd/table (::airport/full-table inputs)}
+                       ::plot/index-above        {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :Above-Index
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   above-filt}
+                       ::plot/index-below        {::tmd/x-key           :Day
+                                                  ::tmd/y-key           :Below-Index
+                                                  ::tmd/table-to-filter (::airport/full-table inputs)
+                                                  ::tmd/col-filter-fn   below-filt}
+                       ::plot/cycle-start-value  (::cycle-start-value inputs)
+                       ::plot/cycle-length       (::cycle-length inputs)
+                       ::plot/cycle-phase        (::cycle-phase inputs)}}))
+#_
+(let [figs (->> [{::single-gmwl-figures [{::plot/rain-subplot [::plot/svg]}
+                                        {::plot/index-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                        {::plot/hist-count-all-subplot [::plot/svg]}
+                                        {::plot/hist-count-classified-subplot [::plot/svg]}
+                                        {::plot/hist-count-subplot [::plot/svg]}
+                                        {::plot/hist-rain-all-subplot [::plot/svg]}
+                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                        {::plot/hist-rain-subplot [::plot/svg]}
+                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
+                    (p.a.eql/process env
+                                     @*state)
+                    deref
+                    ::single-gmwl-figures)]
+      (->> figs
+           (mapv (fn [[key
+                       value]]
+                   (->> value
+                        ::plot/svg
+                        (spit (str "./out/gmwl-"
+                                   (name key)
+                                   ".svg")))))))
+
 
 (pco/defresolver $rain-monsoon-figure
   [inputs]
@@ -326,20 +434,23 @@
       kxygk.pathmore.cache/inject-for-all-resolvers))
 
 ;; PRINT TABLES TO FILES
-(let [{::airport/keys [full-table
-                       above-table
-                       below-table]} (->> [::airport/full-table
-                                           ::airport/above-table
-                                           ::airport/below-table]
+(let [{::airport/keys [full-table]} (->> [::airport/full-table]
                                           (p.a.eql/process env
                                                            @*state)
                                           deref) ]
   (tech.v3.dataset/write! full-table
-                          "full-table.txt")
-  (tech.v3.dataset/write! above-table
-                          "above-table.txt")
-  (tech.v3.dataset/write! below-table
-                          "below-table.txt"))
+                          "full-table.txt"))
+
+
+
+(let [{::airport/keys [full-table]} (->> [::airport/full-table]
+                                          (p.a.eql/process env
+                                                           @*state)
+                                          deref) ]
+  (-> full-table
+      (tech.v3.dataset/sort-by-column :GMWL-d18O)
+      (tech.v3.dataset/filter-column :Above?)))
+
 
 
 ;; PROFILING
