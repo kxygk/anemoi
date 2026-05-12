@@ -23,12 +23,17 @@
                                       "first-sheet-extracted.csv")
          ::climate-index-filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
                                       "climate-index.csv")
+         ::nakhon-filestr        (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                      "TH000048552.csv")
+         ::klang-filestr         (str "/home/kxygk/Data/Tan2019/"
+                                      "modern-part.csv")
          ::crazy-dates           #{#time/date "2017-07-30"}
          ::start-date            #inst"2011-01-01"
          ::end-date              #inst"2021-01-01"
          ::cycle-start-value     2011
          ::cycle-length          365
          ::cycle-phase           0
+         ::big-storm-mm          80.0
          :above-index-threshold  99.9    ;; default to no threshold
          :below-index-threshold  99.9}))
 
@@ -40,6 +45,11 @@
 (pco/defresolver $single-figures
   [inputs]
   {::pco/input  [::airport/full-table
+                 ::airport/nakhon-table
+                 ::airport/nakhon-annual-rain-totals
+                 ::airport/nakhon-annual-winter-storm-fraction
+                 ::airport/nakhon-annual-winter-storm-count
+                 ::airport/klang-year-d18O
                  :above-index-threshold
                  :below-index-threshold
                  ::cycle-start-value
@@ -59,10 +69,11 @@
         both-filt    #(or (above-filt %)
                           (below-filt %))]
     {::single-figures {
-                       ::plot/width              1800
-                       ::plot/height             1300 ;;650
+                       ::plot/width              3800 ;;1800
+                       ::plot/height             1300
                        ::plot/scale              100
                        ::plot/margin-frac        0.1
+                       ::plot/table              (::airport/full-table inputs)
                        ;;
                        ::plot/d18O-rain          {::tmd/x-key           :d18O
                                                   ::tmd/y-key           :Rain-mm
@@ -117,23 +128,39 @@
                                                   ::tmd/col-filter-fn   below-filt}
                        ::plot/cycle-start-value  (::cycle-start-value inputs)
                        ::plot/cycle-length       (::cycle-length inputs)
-                       ::plot/cycle-phase        (::cycle-phase inputs)}}))
+                       ::plot/cycle-phase        (::cycle-phase inputs)
+                       ::plot/klang-year-d18O    (::airport/klang-year-d18O inputs)
+                       ::plot/rain-totals        (::airport/nakhon-annual-rain-totals inputs)
+                       ::plot/nakhon-rain        {::tmd/x-key :Day
+                                                  ::tmd/y-key :PRCP
+                                                  ::tmd/table (::airport/nakhon-table inputs)}
+                       ::plot/big-rain-fraction  (::airport/nakhon-annual-winter-storm-fraction inputs)
+                       ::plot/big-rain-counts    (::airport/nakhon-annual-winter-storm-count inputs)
+                       }}))
+
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
-                                        {::plot/index-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                        {::plot/hist-count-all-subplot [::plot/svg]}
-                                        {::plot/hist-count-classified-subplot [::plot/svg]}
-                                        {::plot/hist-count-subplot [::plot/svg]}
-                                        {::plot/hist-rain-all-subplot [::plot/svg]}
-                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                        {::plot/hist-rain-subplot [::plot/svg]}
-                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
+                                    {::plot/index-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/hist-count-all-subplot [::plot/svg]}
+                                    {::plot/hist-count-classified-subplot [::plot/svg]}
+                                    {::plot/hist-count-subplot [::plot/svg]}
+                                    {::plot/hist-rain-all-subplot [::plot/svg]}
+                                    {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                    {::plot/hist-rain-subplot [::plot/svg]}
+                                    {::plot/hist-monsoon-classified-subplot [::plot/svg]}
+                                    {::plot/nakhon-rain-layer [::plot/svg] }
+                                    {::plot/nakhon-big-rain-count-layer [::plot/svg] }
+                                    {::plot/nakhon-big-rain-fraction-layer [::plot/svg] }
+                                    {::plot/klang-d18O-layer [::plot/svg] }
+                                    {::plot/annual-stats-subplot [::plot/svg] }]}]
                     (p.a.eql/process env
-                                     @*state)
+                                     (merge @*state
+                                            {::big-storm-mm 110.0}))
                     deref
                     ::single-figures)]
       (->> figs
@@ -147,6 +174,7 @@
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
                                     {::plot/index-subplot [::plot/svg]}
+                                        {::plot/index-d18O-subplot [::plot/svg]}
                                     {::plot/rain-d18O-subplot [::plot/svg]}
                                     {::plot/rain-d18O-average-subplot [::plot/svg]}
                                     {::plot/rain-d18O-classified-subplot [::plot/svg]}
@@ -160,7 +188,7 @@
                                     {::plot/hist-monsoon-classified-subplot [::plot/svg]}]}]
                 (p.a.eql/process env
                                  (merge @*state
-                                        {:above-index-threshold 0.99
+                                        {:above-index-threshold 0.99   ;; <------- This one adds thresholds
                                          :below-index-threshold 0.05}))
                 deref
                 ::single-figures)]
@@ -183,8 +211,8 @@
 (->> [{::timeseries-figure [{::plot/d18O-data [{:y [{::stat/hist [{:y [::stat/max]}]}]}]}]}]
      (p.a.eql/process env
                       @*state)
-     deref
-     ::timeseries-figure)
+     deref)
+
 
 (pco/defresolver $single-gmwl-figures
   [inputs]
@@ -270,6 +298,7 @@
 #_
 (let [figs (->> [{::single-gmwl-figures [{::plot/rain-subplot [::plot/svg]}
                                         {::plot/index-subplot [::plot/svg]}
+                                        {::plot/index-d18O-subplot [::plot/svg]}
                                         {::plot/rain-d18O-subplot [::plot/svg]}
                                         {::plot/rain-d18O-average-subplot [::plot/svg]}
                                         {::plot/rain-d18O-classified-subplot [::plot/svg]}
@@ -294,12 +323,95 @@
                                    (name key)
                                    ".svg")))))))
 
+(pco/defresolver $simple-figures
+  [inputs]
+  {::pco/input  [::airport/full-table]
+   ::pco/outout [::simple-figures]}
+  {::simple-figures {::plot/width              1800
+                     ::plot/height             1300 #_2900 ;;650
+                     ::plot/scale              100
+                     ::plot/margin-frac        0.1
+                     ::plot/table (::airport/full-table inputs)
+                     ::plot/rain-totals (::airport/nakhon-annual-rain-totals inputs)
+                     ::plot/big-rain-totals (::airport/nakhon-annual-rain-totals inputs)
+                     ::plot/big-storm-mm 80.0}})
+(identity @*state)
 
+#_
+(->> [::airport/nakhon-annual-winter-storm-fraction]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::airport/nakhon-annual-winter-storm-fraction
+     vec)
+
+#_
+(->> [::airport/nakhon-annual-winter-storm-count]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::airport/nakhon-annual-winter-storm-count
+     vec)
+#_
+(->> [::airport/nakhon-annual-rain-totals]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::airport/nakhon-annual-rain-totals)
+#_
+(->> [::airport/klang-table
+      ::airport/klang-year-d18O]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::airport/klang-year-d18O)
+#_
+(->> [{::simple-figures [{::plot/meteoric-water-line-subplot [::plot/svg]}]}]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::simple-figures
+     ::plot/meteoric-water-line-subplot
+     ::plot/svg
+     (spit "./out/meteoric-water-line.svg"))
+#_
+(->> [{::simple-figures [{::plot/monthly-averages-subplot [::plot/svg]}]}]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::simple-figures
+     ::plot/monthly-averages-subplot
+     ::plot/svg
+      (spit "./out/monthly-averages.svg"))
+#_
+(->> [{::simple-figures [{::plot/amount-effect-subplot [::plot/svg]}]}]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::simple-figures
+     ::plot/amount-effect-subplot
+     ::plot/svg
+      (spit "./out/amount-effect.svg"))
+
+
+     #_{#time/month "MAY" -4.39515931116292, #time/month "DECEMBER" -4.87025263610812, #time/month "NOVEMBER" -5.892095496817324, #time/month "JUNE" -4.061993906191126, #time/month "OCTOBER" -5.551088488343817, #time/month "AUGUST" -4.740541788139581, #time/month "FEBRUARY" -3.773729056965054, #time/month "APRIL" -5.222508679794652, #time/month "JANUARY" -8.81139040857962, #time/month "SEPTEMBER" -5.313021538364952, #time/month "JULY" -3.983077143718893, #time/month "MARCH" -7.510604884306495}
+
+#_
+(->> [{::rain-monsoon-figure [{::plot/rain-subplot [::plot/svg]}]}]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::rain-monsoon-figure
+     ::plot/rain-subplot
+     ::plot/svg
+     (spit "test-only.svg"))
+
+
+
+#_
 (pco/defresolver $rain-monsoon-figure
   [inputs]
   {::pco/input  [::airport/full-table
-                 ::airport/above-table
-                 ::airport/below-table
                  ::days-vs-rain
                  ::days-vs-d18O
                  ::days-vs-above?
@@ -427,8 +539,17 @@
                                                 ::start-date)
                      (pbir/equivalence-resolver ::airport/end-date
                                                 ::end-date)
+                     (pbir/equivalence-resolver ::airport/nakhon-filestr
+                                                ::nakhon-filestr)
+                     (pbir/equivalence-resolver ::airport/klang-filestr
+                                                ::klang-filestr)
+                     (pbir/equivalence-resolver ::airport/big-storm-mm
+                                                ::big-storm-mm)
                      plot/env
                      $single-figures
+                     $single-gmwl-figures
+                     $simple-figures
+                     #_
                      $rain-monsoon-figure])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
@@ -442,7 +563,9 @@
                           "full-table.txt"))
 
 
-
+;; Look at very depleted Summer Monsoon samples
+;; (I don't see any trend or reason)
+#_
 (let [{::airport/keys [full-table]} (->> [::airport/full-table]
                                           (p.a.eql/process env
                                                            @*state)
@@ -484,6 +607,29 @@
                                           value]]
                                       (->> value
                                            ::plot/svg))))))))
+
+
+;; WITH THREAD
+;; Evaluation count : 120 in 60 samples of 2 calls.
+;;              Execution time mean : 609.654037 ms
+;;     Execution time std-deviation : 27.645423 ms
+;;    Execution time lower quantile : 566.101235 ms ( 2.5%)
+;;    Execution time upper quantile : 654.923436 ms (97.5%)
+;;                    Overhead used : 9.451493 ns
+
+;; Found 1 outliers in 60 samples (1.6667 %)
+;; 	low-severe	 1 (1.6667 %)
+;;  Variance from outliers : 31.9262 % Variance is moderately inflated by outliers
+
+
+;; WITH VTHREAD
+
+;; Evaluation count : 180 in 60 samples of 3 calls.
+;;              Execution time mean : 567.565452 ms
+;;     Execution time std-deviation : 43.409156 ms
+;;    Execution time lower quantile : 491.394603 ms ( 2.5%)
+;;    Execution time upper quantile : 650.390960 ms (97.5%)
+;;                    Overhead used : 9.432664 ns
 
 
 ;; Evaluation count : 120 in 60 samples of 2 calls.
