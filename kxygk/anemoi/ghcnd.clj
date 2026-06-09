@@ -126,15 +126,15 @@
   [{::keys [table]}]
   {::pco/output [::by-year]}
   (p/vthread {::by-year (-> table
-                                   (ds/add-or-update-column :YEAR
-                                                            (->> table
-                                                                 :DATE
-                                                                 (mapv tick/year)))
-                                   (ds/group-by :YEAR)
-                                   set
-                                   (update-keys #(-> %
-                                                     str
-                                                     Integer/parseInt)))}))
+                            (ds/add-or-update-column :YEAR
+                                                     (->> table
+                                                          :DATE
+                                                          (mapv tick/year)))
+                            (ds/group-by :YEAR)
+                            set
+                            (update-keys #(-> %
+                                              str
+                                              Integer/parseInt)))}))
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
@@ -145,21 +145,14 @@
 
 (pco/defresolver $annual-rain
   [{::keys [by-year]}]
-  {::pco/output [{::annual-rain [#_#_{:x [:data-vec]}
-                                 {:y [:data-vec]}
-                                 :xy-all]}]}
-  (let [xy-all  (->> (update-vals by-year
-                                  #(->> %
-                                        :PRCP
-                                        (filterv some?)
-                                        (apply +)))
-                     (mapv identity)
-                     sort)]
-    {::annual-rain {#_#_#_#_:x {:data-vec (->> xy-all
-                                       (mapv first))}
-                    :y {:data-vec (->> xy-all
-                                       (mapv second))}
-                    :xy-all xy-all}}))
+  {::pco/output [{::annual-rain [:xy-all]}]}
+  {::annual-rain {:xy-all (->> (update-vals by-year
+                                            #(->> %
+                                                  :PRCP
+                                                  (filterv some?)
+                                                  (apply +)))
+                               (mapv identity)
+                               sort)}})
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
@@ -171,24 +164,17 @@
 (pco/defresolver $annual-storm-count
   [{::keys [by-year
             storm-threshold-mm]}]
-  {::pco/output [{::annual-storm-count [#_#_{:x [:data-vec]}
-                                        {:y [:data-vec]}
-                                        :xy-all]}]}
-  (let [xy-all (->> (update-vals by-year
-                                 (fn [year-table]
-                                   (->> year-table
-                                        :PRCP
-                                        (filterv some?)
-                                        (filterv #(> %
-                                                     storm-threshold-mm))
-                                        count)))
-                    (mapv identity)
-                    sort)]
-    {::annual-storm-count {#_#_#_#_:x      {:data-vec (->> xy-all
-                                                   (mapv first))}
-                           :y      {:data-vec (->> xy-all
-                                                   (mapv second))}
-                           :xy-all xy-all}}))
+  {::pco/output [{::annual-storm-count [:xy-all]}]}
+  {::annual-storm-count {:xy-all (->> (update-vals by-year
+                                                   (fn [year-table]
+                                                     (->> year-table
+                                                          :PRCP
+                                                          (filterv some?)
+                                                          (filterv #(> %
+                                                                       storm-threshold-mm))
+                                                          count)))
+                                      (mapv identity)
+                                      sort)}})
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
@@ -200,32 +186,25 @@
 (pco/defresolver $annual-storm-fraction
   [{::keys [by-year
             storm-threshold-mm]}]
-{::pco/output [{::annual-storm-fraction [{:x [:data-vec]}
-                                         {:y [:data-vec]}
-                                         :xy-all]}]}
-  (let [xy-all (->> (update-vals by-year
-                                 (fn [year-table]
-                                   (let [split-table (->> year-table
-                                                          :PRCP
-                                                          (filterv some?)
-                                                          (group-by #(> %
-                                                                        storm-threshold-mm)))]
-                                     (let [big-winter-rains (apply +
-                                                                   (get split-table
-                                                                        true))
-                                           other-rains      (apply +
-                                                                   (get split-table
-                                                                        false))]
-                                       (/ big-winter-rains
-                                          (+ big-winter-rains
-                                             other-rains))))))
-                    (mapv identity)
-                    sort)]
-    {::annual-storm-fraction {:x      {:data-vec (->> xy-all
-                                                      (mapv first))}
-                              :y      {:data-vec (->> xy-all
-                                                      (mapv second))}
-                              :xy-all xy-all}}))
+  {::pco/output [{::annual-storm-fraction [:xy-all]}]}
+  {::annual-storm-fraction {:xy-all (->> (update-vals by-year
+                                                      (fn [year-table]
+                                                        (let [split-table (->> year-table
+                                                                               :PRCP
+                                                                               (filterv some?)
+                                                                               (group-by #(> %
+                                                                                             storm-threshold-mm)))]
+                                                          (let [big-winter-rains (apply +
+                                                                                        (get split-table
+                                                                                             true))
+                                                                other-rains      (apply +
+                                                                                        (get split-table
+                                                                                             false))]
+                                                            (/ big-winter-rains
+                                                               (+ big-winter-rains
+                                                                  other-rains))))))
+                                         (mapv identity)
+                                         sort)}})
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
@@ -234,39 +213,31 @@
                        ::storm-threshold-mm      100}
                       [{::annual-storm-fraction [:y]}]))
 
-
 (pco/defresolver $annual-storm-rain
-[{::keys [by-year
-          storm-threshold-mm]}]
-{::pco/output [{::annual-storm-rain [{:x [:data-vec]}
-                                     {:y [:data-vec]}
-                                     :xy-all]}]}
-  (let [xy-all (->> (update-vals by-year
-                                 (fn [year-table]
-                                   (let [split-table (->> year-table
-                                                          :PRCP
-                                                          (filterv some?)
-                                                          (group-by #(> %
-                                                                        storm-threshold-mm)))]
-                                     (let [big-winter-rains (apply +
-                                                                   (get split-table
-                                                                        true))
-                                           #_#_
-                                           other-rains      (apply +
-                                                                   (get split-table
-                                                                        false))]
-                                       big-winter-rains
-                                       #_
-                                       (/ big-winter-rains
-                                          (+ big-winter-rains
-                                             other-rains))))))
-                    (mapv identity)
-                    sort)]
-    {::annual-storm-rain {:x      {:data-vec (->> xy-all
-                                                  (mapv first))}
-                          :y      {:data-vec (->> xy-all
-                                                  (mapv second))}
-                          :xy-all xy-all}}))
+  [{::keys [by-year
+            storm-threshold-mm]}]
+  {::pco/output [{::annual-storm-rain [:xy-all]}]}
+  {::annual-storm-rain {:xy-all (->> (update-vals by-year
+                                                  (fn [year-table]
+                                                    (let [split-table (->> year-table
+                                                                           :PRCP
+                                                                           (filterv some?)
+                                                                           (group-by #(> %
+                                                                                         storm-threshold-mm)))]
+                                                      (let [big-winter-rains (apply +
+                                                                                    (get split-table
+                                                                                         true))
+                                                            #_#_
+                                                            other-rains      (apply +
+                                                                                    (get split-table
+                                                                                         false))]
+                                                        big-winter-rains
+                                                        #_
+                                                        (/ big-winter-rains
+                                                           (+ big-winter-rains
+                                                              other-rains))))))
+                                     (mapv identity)
+                                     sort)}})
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
