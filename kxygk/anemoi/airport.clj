@@ -361,140 +361,7 @@ Get the number of the last day"
 
 (make-isotope-node :$d18O-above-node #(> (:index %) 0))
 
-(pco/defresolver $nakhon-filestr->table
-  [{::keys [nakhon-filestr]}]
-  {::pco/output [::nakhon-table]}
-  (p/vthread {::nakhon-table
-              (let [raw-table (-> nakhon-filestr
-                                  (ds/->dataset {:dataset-name "Nakhon GHCNd"
-                                                 :key-fn normalize-colname}))]
-                (assoc raw-table
-                       :Day
-                       (range 1
-                              (-> raw-table
-                                  ds/row-count
-                                  inc))))}))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-table])
-    ::nakhon-table
-    :Day
-    vec)
-;; (:STATION :DATE :LATITUDE :LONGITUDE :ELEVATION :NAME :PRCP :PRCP_ATTRIBUTES :TMAX :TMAX_ATTRIBUTES :TMIN :TMIN_ATTRIBUTES :TAVG :TAVG_ATTRIBUTES)
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-table])
-    ::nakhon-table
-    :DATE
-    first
-    tick/year)
 
-(pco/defresolver $nakhon-by-year
-  [{::keys [nakhon-table]}]
-  {::pco/output [::nakhon-by-year]}
-  (p/vthread {::nakhon-by-year (-> nakhon-table
-                                 (ds/add-or-update-column :YEAR
-                                                          (->> nakhon-table
-                                                               :DATE
-                                                               (mapv tick/year)))
-                                 (ds/group-by :YEAR)
-                                 set
-                                 (update-keys #(-> %
-                                                   str
-                                                   Integer/parseInt)))}))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-by-year])
-    ::nakhon-by-year
-    keys)
-
-(first {:hello "world"
-        :how   "are"})
-
-
-(pco/defresolver $nakhon-annual-rain-totals
-  [{::keys [nakhon-by-year]}]
-  {::pco/output [::nakhon-annual-rain-totals]}
-  (p/vthread {::nakhon-annual-rain-totals (->> (update-vals nakhon-by-year
-                                                         #(->> %
-                                                                 :PRCP
-                                                                 (filterv some?)
-                                                                 (apply +)
-                                                                 (* 0.1)))
-                                                         ;; GHCNd data in "(tenths of mm)"
-                                                         ;; see:
-                                                         ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
-                                               (mapv identity)
-                                               sort)}))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-annual-rain-totals])
-    ::nakhon-annual-rain-totals)
-
-
-
-(pco/defresolver $nakhon-annual-winter-storm-count
-  [{::keys [nakhon-by-year
-            big-storm-mm]}]
-  {::pco/output [::nakhon-annual-winter-storm-count]}
-  (p/vthread {::nakhon-annual-winter-storm-count
-              (->> (update-vals nakhon-by-year
-                                (fn [year-table]
-                                  (->> year-table
-                                       :PRCP
-                                       (filterv some?)
-                                       (filterv #(> %
-                                                    (* 10
-                                                       big-storm-mm)))
-                                       count)))
-                   (mapv identity)
-                   sort)}))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-annual-winter-storm-count])
-    ::nakhon-annual-winter-storm-count)
-
-
-(pco/defresolver $nakhon-annual-winter-storm-fraction
-  [{::keys [nakhon-by-year
-            big-storm-mm]}]
-  {::pco/output [::nakhon-annual-winter-storm-fraction]}
-  (p/vthread {::nakhon-annual-winter-storm-fraction
-              (->> (update-vals nakhon-by-year
-                                (fn [year-table]
-                                  (let [split-table (->> year-table
-                                                         :PRCP
-                                                         (filterv some?)
-                                                         (group-by #(> %
-                                                                       (* 10
-                                                                          big-storm-mm))))]
-                                    (let [big-winter-rains (apply +
-                                                                  (get split-table
-                                                                       true))
-                                          other-rains (apply +
-                                                             (get split-table
-                                                                  false))]
-                                      (/ big-winter-rains
-                                         (+ big-winter-rains
-                                            other-rains))))))
-                   (mapv identity)
-                   sort)}))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-annual-winter-storm-count])
-    ::nakhon-annual-winter-storm-count)
 
 
 
@@ -530,11 +397,13 @@ Get the number of the last day"
                  $leapless-dates-table
                  $climate-index-table
                  $full-table
+                 #_#_#_#_#_#_
                  $nakhon-filestr->table
                  $nakhon-by-year
                  $nakhon-annual-rain-totals
                  $nakhon-annual-winter-storm-fraction
                  $nakhon-annual-winter-storm-count
+                 $nakhon-modern-table
                  $klang-table
                  $klang-year-d18O
                  ]))

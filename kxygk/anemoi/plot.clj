@@ -2,6 +2,7 @@
   (:require [clojure.math]
             [clojure.string]
             [kxygk.anemoi.stat :as stat]
+            [kxygk.anemoi.ghcnd :as ghcnd]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.operation :as pco]
@@ -279,52 +280,100 @@
 (pco/defresolver $d18O-layer
   [{::keys [d18O-data
             width
+            scale
             d18O-axis
             day-num-min
             day-num-max]}]
-  {::pco/input [{::d18O-data [:xy-nonil]}
-                ::width
-                ::d18O-axis
-                ::day-num-min
-                ::day-num-max]
+  {::pco/input  [{::rain-data [:xy-nonil]}
+                 {::d18O-data [:xy-nonil]}
+                 ::scale
+                 ::width
+                 ::d18O-axis
+                 ::day-num-min
+                 ::day-num-max]
    ::pco/output [::d18O-layer]}
-  (p/vthread   {::d18O-layer (-> d18O-axis
-                    (update :data
-                            #(into %
-                                   (quickthing/circles (->> (:xy-nonil d18O-data)
-                                                            (mapv (fn [point]
-                                                                    (update point
-                                                                            2
-                                                                            (fn [attribs]
-                                                                              (merge attribs
-                                                                                     {:fill "#3333ff"}))))))
-                                                       {:scale   10
-                                                        :attribs {:fill "#3333ff"}})))
-                    viz/svg-plot2d-cartesian)}))
+  (p/vthread {::d18O-layer (-> d18O-axis
+                               (update :data
+                                       #(into %
+                                              (quickthing/circles (mapv (fn [[x
+                                                                              y
+                                                                              meta]]
+                                                                          (let [rain (-> meta
+                                                                                         :Rain-mm)]
+                                                                            [x
+                                                                             y
+                                                                             (if rain
+                                                                               (merge meta
+                                                                                      {:radius (-> rain
+                                                                                                   Math/sqrt)})
+                                                                               (merge meta ;; rain unknown
+                                                                                      {:radius (/ scale
+                                                                                                  10);; fixed
+                                                                                       :stroke-width (/ scale
+                                                                                                        20)
+                                                                                       :stroke   "grey"}))]))
+                                                                        (:xy-nonil d18O-data))
+                                                                  {:scale   10
+                                                                   :attribs {:fill "#3333ff"}})))
+                               viz/svg-plot2d-cartesian)}))
 
 
 (pco/defresolver $d18O-classified-layer ;; reuse resolver
   [{::keys [d18O-above-data
             d18O-below-data
+            scale
             width
             d18O-axis]}]
   {::pco/input  [{::d18O-above-data [:xy-nonil]}
                  {::d18O-below-data [:xy-nonil]}
                  {::above?-data [:y]}
+                 ::scale
                  ::width
                  ::d18O-axis] ;;
    ::pco/output [::d18O-classified-layer]}
    (p/vthread  {::d18O-classified-layer (-> d18O-axis
                                (update :data
                                        #(into %
-                                              (quickthing/circles (->> d18O-above-data
-                                                                       :xy-nonil)
+                                              (quickthing/circles (mapv (fn [[x
+                                                                              y
+                                                                              meta]]
+                                                                          (let [rain (-> meta
+                                                                                         :Rain-mm)]
+                                                                            [x
+                                                                             y
+                                                                             (if rain
+                                                                               (merge meta
+                                                                                      {:radius (-> rain
+                                                                                                   Math/sqrt)})
+                                                                               (merge meta ;; rain unknown
+                                                                                      {:radius (/ scale
+                                                                                                  10) ;; fixed
+                                                                                       :stroke-width (/ scale
+                                                                                                        20)
+                                                                                       :stroke   "grey"}))]))
+                                                                        (:xy-nonil d18O-above-data))
                                                                   {:scale   10
                                                                    :attribs {:fill summer-color}})))
                                (update :data
                                        #(into %
-                                              (quickthing/circles (->> d18O-below-data
-                                                                       :xy-nonil)
+                                              (quickthing/circles (mapv (fn [[x
+                                                                              y
+                                                                              meta]]
+                                                                          (let [rain (-> meta
+                                                                                         :Rain-mm)]
+                                                                            [x
+                                                                             y
+                                                                             (if rain
+                                                                               (merge meta
+                                                                                      {:radius (-> rain
+                                                                                                   Math/sqrt)})
+                                                                               (merge meta ;; rain unknown
+                                                                                      {:radius (/ scale
+                                                                                                  10) ;; fixed
+                                                                                       :stroke-width (/ scale
+                                                                                                        20)
+                                                                                       :stroke   "grey"}))]))
+                                                                        (:xy-nonil d18O-below-data))
                                                                   {:scale   10
                                                                    :attribs {:fill winter-color}})))
                                viz/svg-plot2d-cartesian)}))
@@ -582,17 +631,83 @@
 (pco/defresolver $isotope-d18O-classified-average-subplot
   [{::keys [width
             height
+            d18O-classified-layer
             index-layer
             d18O-above-average-layer
             d18O-below-average-layer]}]
   {::pco/output [{::isotope-d18O-classified-average-subplot [::hiccup]}]}
    (p/vthread  {::isotope-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
-                                                                                index-layer
-                                                                                d18O-above-average-layer
-                                                                                d18O-below-average-layer)
+                                                                                   index-layer
+                                                                                   d18O-classified-layer
+                                                                                   d18O-above-average-layer
+                                                                                   d18O-below-average-layer)
                                                         (quickthing/svg-wrap [width
                                                                               height]
                                                                              width))}}))
+
+(pco/defresolver $nakhon-modern-rain-layer
+  "Rains in Nakhon"
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            nakhon-gauge-modern]}]
+  {::pco/input  [::width
+                 ::height
+                 ::scale
+                 ::margin-frac
+                 {::nakhon-gauge-modern [{::ghcnd/daily-rain [:xy-nonil
+                                                              :y]}]}]
+   ::pco/output [{::nakhon-modern-rain-layer [::hiccup]}]}
+  (let [rain-xy (-> nakhon-gauge-modern
+                    ::ghcnd/daily-rain
+                    :xy-nonil)]
+  {::nakhon-modern-rain-layer {::hiccup (-> (quickthing/primary-axis rain-xy
+                                                                     {:width       width
+                                                                      :height      height
+                                                                      :y-name      "Rain (mm)"
+                                                                      :scale       scale
+                                                                      :margin-frac margin-frac
+                                                                      #_#_
+                                                                      :color       "#0008"})
+                                            (assoc-in [:x-axis
+                                                       :visible]
+                                                      false)
+                                            (assoc-in [:y-axis
+                                                       :visible]
+                                                      true)
+                                            (assoc-in [:grid]
+                                                      nil)
+                                            (update :data
+                                                    #(into %
+                                                           (quickthing/bars rain-xy
+                                                                            {:attribs {:stroke       "black"
+                                                                                       :stroke-width (/ width
+                                                                                                        (count rain-xy))}})))
+                                            viz/svg-plot2d-cartesian
+                                            (quickthing/svg-wrap [width
+                                                                  height]
+                                                                 width))}}))
+
+(pco/defresolver $nakhon-d18O-classified-average-subplot
+[{::keys [width
+          height
+          grid-layer
+          d18O-classified-layer
+          nakhon-modern-rain-layer
+          d18O-above-average-layer
+          d18O-below-average-layer]}]
+  {::pco/output [{::nakhon-d18O-classified-average-subplot [::hiccup]}]}
+  {::nakhon-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
+                                                                     grid-layer
+                                                                     (::hiccup nakhon-modern-rain-layer)
+                                                                     d18O-classified-layer
+                                                                     #_#_
+                                                                     d18O-above-average-layer
+                                                                     d18O-below-average-layer)
+                                                          (quickthing/svg-wrap [width
+                                                                                height]
+                                                                               width))}})
 
 
 (pco/defresolver $index-subplot
@@ -601,82 +716,104 @@
             grid-layer
             index-layer]}]
   {::pco/output [{::index-subplot [::hiccup]}]}
-   (p/vthread  {::index-subplot {::hiccup (-> (svg/group {}
-                                   grid-layer
-                                   index-layer)
-                        (quickthing/svg-wrap [width
-                                              height]
-                                             width))}}))
+  (p/vthread  {::index-subplot {::hiccup (-> (svg/group {}
+                                                        grid-layer
+                                                        index-layer)
+                                             (quickthing/svg-wrap [width
+                                                                   height]
+                                                                  width))}}))
 
 #_
 ((ds/filter-column glued
                    "ENSO"
                    #(pos? %)))
 
-#_
-(pco/defresolver $d18O-below-select-layer ;; reuse resolver :; UGLY!!! doesn't leverage resolvers correctly
-  [{::keys [table
-            width
+(pco/defresolver $d18O-below-select-layer
+  [{::keys [width
             scale
-            d18O-axis]}]
-  {::pco/input  [::table
-                 ::width
-                 ::d18O-axis] ;;
+            d18O-axis
+            d18O-extremes-data
+            d18O-other-data]}]
+  {::pco/input  [::width
+                 ::d18O-axis
+                 {::d18O-extremes-data [:xy-nonil]}
+                 {::d18O-other-data [:xy-nonil]}] ;;
    ::pco/output [::d18O-below-select-layer]}
-  (p/vthread  {::d18O-below-select-layer (let [;; EXTREME
-                                               extreme-events-table (-> table
-                                                                       (ds/filter-column :Below-Index
-                                                                                         #(< 0.06
-                                                                                             %))
-                                                                       (ds/filter-column :d18O)
-                                                                       (ds/filter-column :Rain-mm))
-                                               points-extreme              (mapv vector
-                                                                         (vec (:Day extreme-events-table))
-                                                                         (vec (:d18O extreme-events-table)))
-                                               average-d18O-extreme (/ (apply + (mapv *
-                                                                              (vec (:Rain-mm extreme-events-table))
-                                                                              (vec (:d18O extreme-events-table))))
-                                                                     (apply + (vec (:Rain-mm extreme-events-table))))
+  (p/vthread  {::d18O-below-select-layer (let [last-day                 (apply max ;; find last day
+                                                                               (into (mapv first
+                                                                                           (:xy-nonil d18O-extremes-data))
+                                                                                     (mapv first
+                                                                                           (:xy-nonil d18O-other-data))))
+                                               max-val (apply max
+                                                              (into (mapv second
+                                                                          (:xy-nonil d18O-extremes-data))
+                                                                    (mapv second
+                                                                          (:xy-nonil d18O-other-data))))
+                                               ;; EXTREME
+                                               extreme-volume           (->> d18O-extremes-data
+                                                                             :xy-nonil
+                                                                             (mapv last)
+                                                                             (mapv :Rain-mm)
+                                                                             (filterv some?)
+                                                                             (apply +))
+                                               extreme-weighted-average (/ (->> d18O-extremes-data
+                                                                                :xy-nonil
+                                                                                (mapv (fn [[_
+                                                                                            d18O
+                                                                                            {:keys [Rain-mm]}]]
+                                                                                        (if (nil? Rain-mm)
+                                                                                          0
+                                                                                          (* d18O
+                                                                                             Rain-mm))))
+                                                                                (apply +))
+                                                                           extreme-volume)
                                                ;; OTHER
-                                               other-events-table (-> table
-                                                                      (ds/filter-column :Below-Index
-                                                                                        #(> 0.06
-                                                                                            %))
-                                                                      (ds/filter-column :d18O)
-                                                                      (ds/filter-column :Rain-mm))
-                                               points-other              (mapv vector
-                                                                               (vec (:Day other-events-table))
-                                                                               (vec (:d18O other-events-table)))
-                                               average-d18O-other (/ (apply + (mapv *
-                                                                                    (vec (:Rain-mm other-events-table))
-                                                                                    (vec (:d18O other-events-table))))
-                                                                     (apply + (vec (:Rain-mm other-events-table))))]
+                                               other-volume             (->> d18O-other-data
+                                                                             :xy-nonil
+                                                                             (mapv last)
+                                                                             (mapv :Rain-mm)
+                                                                             (filterv some?)
+                                                                             (apply +))
+                                               other-weighted-average   (/ (->> d18O-other-data
+                                                                                :xy-nonil
+                                                                                (mapv (fn [[_
+                                                                                            d18O
+                                                                                            {:keys [Rain-mm]}]]
+                                                                                        (if (nil? Rain-mm)
+                                                                                          0
+                                                                                          (* d18O
+                                                                                             Rain-mm))))
+                                                                                (apply +))
+                                                                           other-volume)
+                                               #_#_
+                                               average-d18O-other       (/ (apply + (mapv *
+                                                                                          (vec (:Rain-mm other-events-table))
+                                                                                          (vec (:d18O other-events-table))))
+                                                                           (apply + (vec (:Rain-mm other-events-table))))]
                                            (println (str "AVERAGE Extreme d18O"
-                                                         average-d18O-extreme))
+                                                         extreme-weighted-average))
                                            (println (str "AVERAGE Other d18O"
-                                                         average-d18O-other))
+                                                         other-weighted-average))
                                            (-> d18O-axis
-                                               #_
                                                (assoc :legend
                                                       [["WINTER STORM"
                                                         {:fill   "red"
                                                          :stroke nil}]])
                                                (update :data
                                                        #(into %
-                                                              (quickthing/circles points-extreme
+                                                              (quickthing/circles (:xy-nonil d18O-extremes-data)
                                                                                   {:scale   (/ scale
                                                                                                4.0)
-                                                                                   :attribs {:stroke "red"
+                                                                                   :attribs {:stroke       "red"
                                                                                              :stroke-width (/ scale
                                                                                                               20.0)
-                                                                                             :fill "none"}})))
+                                                                                             :fill         "none"}})))
                                                (update :data
                                                        #(into %
                                                               (quickthing/dashed-line [[0.0
-                                                                                        average-d18O-extreme]
-                                                                                       [(apply max
-                                                                                               (vec (:Day extreme-events-table)))
-                                                                                        average-d18O-extreme]]
+                                                                                        extreme-weighted-average]
+                                                                                       [last-day
+                                                                                        extreme-weighted-average]]
                                                                                       {:attribs {:stroke-width 10.0
                                                                                                  :stroke       "red"}})))
                                                #_
@@ -685,22 +822,63 @@
                                                               (quickthing/circles points-other
                                                                                   {:scale   (/ scale
                                                                                                4.0)
-                                                                                   :attribs {:stroke "blue"
+                                                                                   :attribs {:stroke       "blue"
                                                                                              :stroke-width (/ scale
                                                                                                               20.0)
-                                                                                             :fill "none"}})))
+                                                                                             :fill         "none"}})))
                                                (update :data
                                                        #(into %
                                                               (quickthing/dashed-line [[0.0
-                                                                                        average-d18O-other]
-                                                                                       [(apply max
-                                                                                               (vec (:Day other-events-table)))
-                                                                                        average-d18O-other]]
+                                                                                        other-weighted-average]
+                                                                                       [last-day
+                                                                                        other-weighted-average]]
                                                                                       {:attribs {:stroke-width 10.0
                                                                                                  :stroke       "blue"}})))
+                                               (update :data
+                                                       #(into %
+                                                              (quickthing/labels [[(* 0.33 ;; x offset
+                                                                                      last-day)
+                                                                                   (* max-val
+                                                                                      1.0)
+                                                                                   {:text              (str "WINTER STORMS: "
+                                                                                                            (format "%.2f"
+                                                                                                                    extreme-weighted-average)
+                                                                                                            " ("
+                                                                                                            (format "%.2f" (* 100
+                                                                                                                              (/ extreme-volume
+                                                                                                                                 (+ extreme-volume
+                                                                                                                                    other-volume))))
+                                                                                                            "% of total)")
+                                                                                    :fill              "red"
+                                                                                    :text-anchor       "beginning"
+                                                                                    :font-size         (/ scale
+                                                                                                          2)
+                                                                                    #_#_
+                                                                                    :dominant-baseline "hanging"}]])))
+                                               (update :data
+                                                       #(into %
+                                                              (quickthing/labels [[(* 0.33 ;; x offset
+                                                                                      last-day)
+                                                                                   (* max-val
+                                                                                      1.2)
+                                                                                   {:text              (str "NORMAL RAINS: "
+                                                                                                            (format "%.2f"
+                                                                                                                    other-weighted-average)
+                                                                                                            " ("
+                                                                                                            (format "%.2f" (* 100
+                                                                                                                              (/ other-volume
+                                                                                                                                 (+ extreme-volume
+                                                                                                                                    other-volume))))
+                                                                                                            "% of total)")
+                                                                                    :fill              "blue"
+                                                                                    :text-anchor       "beginning"
+                                                                                    :font-size         (/ scale
+                                                                                                          2)
+                                                                                    #_#_
+                                                                                    :dominant-baseline "hanging"}]])))
                                                viz/svg-plot2d-cartesian))}))
 
-#_
+
 (pco/defresolver $index-d18O-subplot
   [{::keys [width
             height
@@ -713,10 +891,30 @@
                                                              grid-layer
                                                              index-layer
                                                              d18O-classified-layer
+                                                             #_
                                                              d18O-below-select-layer)
                                                   (quickthing/svg-wrap [width
                                                                         height]
                                                                        width))}}))
+
+
+(pco/defresolver $index-d18O-big-events-subplot
+  [{::keys [width
+            height
+            grid-layer
+            d18O-classified-layer
+            d18O-below-select-layer
+            index-layer]}]
+  {::pco/output [{::index-d18O-big-events-subplot [::hiccup]}]}
+  (p/vthread  {::index-d18O-big-events-subplot {::hiccup (-> (svg/group {}
+                                                             grid-layer
+                                                             index-layer
+                                                             d18O-classified-layer
+                                                             d18O-below-select-layer)
+                                                  (quickthing/svg-wrap [width
+                                                                        height]
+                                                                       width))}}))
+
 
 (pco/defresolver $rain-d18O-index-2stack
   [{::keys [width
@@ -1564,21 +1762,24 @@
             height
             scale
             margin-frac
-            nakhon-rain]}]
+            nakhon-gauge]}]
   {::pco/input  [::width
-                  ::height
-                  ::scale
-                  ::margin-frac
-                  {::nakhon-rain [:xy-nonil :y]}]
+                 ::height
+                 ::scale
+                 ::margin-frac
+                 {::nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil
+                                                       :y]}]}]
    ::pco/output [{::nakhon-rain-layer [::hiccup]}]}
   {::nakhon-rain-layer {::hiccup (-> (quickthing/primary-axis [[0.0
                                                                 0.0]
-                                                               [(tick/between (tick/date "1951-01-01")
+                                                               [(tick/between (tick/date "1951-01-01") ;;UGLY!
                                                                               (tick/date "2005-01-01")
                                                                               :days)
                                                                 (apply max
                                                                        (filterv some?
-                                                                             (:data-vec (:y nakhon-rain))))]]
+                                                                                (:data-vec (-> nakhon-gauge
+                                                                                               ::ghcnd/daily-rain
+                                                                                               :y))))]]
                                                               {:width       width
                                                                :height      height
                                                                :x-name      "Year"
@@ -1592,13 +1793,21 @@
                                                false)
                                      (assoc-in [:y-axis
                                                 :visible]
-                                               false)
+                                               true)
+                                     (assoc-in [:x-axis
+                                                :major]
+                                               [])
                                      (update :data
                                              #(into %
-                                                    (quickthing/bars (:xy-nonil nakhon-rain)
-                                                                     {:attribs {:stroke "black"
+                                                    (quickthing/bars (-> nakhon-gauge
+                                                                         ::ghcnd/daily-rain
+                                                                         :xy-nonil)
+                                                                     {:attribs {:stroke       "black"
                                                                                 :stroke-width (/ width
-                                                                                                 (count (:xy-nonil nakhon-rain)))}})))
+                                                                                                 (count (-> nakhon-gauge
+                                                                                                            ::ghcnd/daily-rain
+                                                                                                            :y
+                                                                                                            :data-vec)))}})))
                                      viz/svg-plot2d-cartesian
                                      (quickthing/svg-wrap [width
                                                            height]
@@ -1611,14 +1820,20 @@
             height
             scale
             margin-frac
-            big-rain-fraction]}]
-  {::pco/output [{::nakhon-big-rain-fraction-layer [::hiccup]}]}
+            nakhon-gauge]}]
+  {::pco/input [::width
+                ::height
+                ::scale
+                ::margin-frac
+                {::nakhon-gauge [{::ghcnd/annual-storm-fraction [:xy-nonil]}]}]
+   ::pco/output [{::nakhon-big-rain-fraction-layer [::hiccup]}]}
+  (let [fraction-xy (-> nakhon-gauge
+                        ::ghcnd/annual-storm-fraction
+                        :xy-nonil)]
   {::nakhon-big-rain-fraction-layer
-   {::hiccup (do (println (str "Big Rain Fraction"
-                               big-rain-fraction))
-                 (-> (quickthing/primary-axis [[1950.5
+   {::hiccup (-> (quickthing/primary-axis [[1951
                                             0]
-                                           [2004.5
+                                           [2005
                                             1.0]]
                                           {:width       width
                                            :height      height
@@ -1628,21 +1843,54 @@
                                            :margin-frac margin-frac
                                            #_#_
                                            :color       "#0008"})
+                 (assoc-in [:y-axis
+                            :visible]
+                           false)
+                 (assoc-in [:y-axis
+                            :major]
+                           [])
+                 (assoc-in [:x-axis
+                            :minor] 
+                           (range 1951
+                                  2005))
+                 ;;#_
+                 (assoc :grid
+                        nil)
                  (update :data
                          #(into %
-                                (quickthing/bars (vec big-rain-fraction)
-                                                 {:attribs {:stroke "lightgrey"
+                                (quickthing/bars (mapv (fn [year]
+                                                         [year
+                                                          1.0])
+                                                       (range 1951.5
+                                                              2005.5))
+                                                 {:attribs {:stroke       "whitesmoke"
                                                             :stroke-width (/ (* width
                                                                                 1.0
                                                                                 (- 1.0
-                                                                                   (* 2.0
+                                                                                   (* 2.2
                                                                                       margin-frac)))
                                                                              (- 2005
                                                                                 1951))}})))
-                         viz/svg-plot2d-cartesian
+                 (update :data
+                         #(into %
+                                (quickthing/bars (->> fraction-xy
+                                                      (mapv (fn [[year
+                                                                  amount]]
+                                                              [(+ year
+                                                                  0.5)
+                                                               amount])))
+                                                 {:attribs {:stroke       "lightgrey"
+                                                            :stroke-width (/ (* width
+                                                                                1.0
+                                                                                (- 1.0
+                                                                                   (* 2.1
+                                                                                      margin-frac)))
+                                                                             (- 2005
+                                                                                1951))}})))
+                 viz/svg-plot2d-cartesian
                  (quickthing/svg-wrap [width
                                        height]
-                                      width)))}})
+                                      width))}}))
 
 
 (pco/defresolver $nakhon-big-rain-count-layer
@@ -1651,38 +1899,68 @@
             height
             scale
             margin-frac
-            big-rain-counts]}]
-  {::pco/output [{::nakhon-big-rain-count-layer [::hiccup]}]}
-  {::nakhon-big-rain-count-layer
-   {::hiccup (do (println (str "Big Rain Counts"
-                               big-rain-counts))
-                 (-> (quickthing/primary-axis [[1950.5
-                                            0]
-                                           [2004.5
-                                            20]]
-                                          {:width       width
-                                           :height      height
-                                           :x-name      "Year"
-                                           :y-name      "Rain (mm)"
-                                           :scale       scale
-                                           :margin-frac margin-frac
-                                           #_#_
-                                           :color       "#0008"})
-                 (update :data
-                         #(into %
-                                (quickthing/bars (vec big-rain-counts)
-                                                 {:attribs {:stroke "lightgrey"
-                                                            :stroke-width (/ (* width
-                                                                                (- 1.0
-                                                                                   margin-frac))
-                                                                             (- 2005
-                                                                                1951))}})))
-                 viz/svg-plot2d-cartesian
-                 (quickthing/svg-wrap [width
-                                       height]
-                                      width)))}})
+            nakhon-gauge]}]
+  {::pco/input  [::width
+                 ::height
+                 ::scale
+                 ::margin-frac
+                 {::nakhon-gauge [{::ghcnd/annual-storm-count [:xy-nonil]}]}]
+   ::pco/output [{::nakhon-big-rain-count-layer [::hiccup]}]}
+  (let [count-xy (-> nakhon-gauge
+                     ::ghcnd/annual-storm-count
+                     :xy-nonil)]
+    {::nakhon-big-rain-count-layer
+     {::hiccup (-> (quickthing/primary-axis [[1951.0
+                                              0]
+                                             [2005.0
+                                              20]]
+                                            {:width       width
+                                             :height      height
+                                             :x-name      "Year"
+                                             :y-name      "Rain (mm)"
+                                             :scale       scale
+                                             :margin-frac margin-frac
+                                             #_#_
+                                             :color       "#0008"})
+                   (assoc-in [:y-axis
+                              :visible]
+                             false)
+                   (assoc-in [:y-axis
+                              :major]
+                             [])
+                   (assoc-in [:x-axis
+                              :minor] 
+                             (range 1951
+                                    2005))
+                   ;;#_
+                   (assoc :grid
+                          nil)
+                   (update :data
+                           #(into %
+                                  (quickthing/bars (->> count-xy
+                                                        (mapv (fn [[year
+                                                                    amount]]
+                                                                [(+ year
+                                                                    0.5)
+                                                                 amount])))
+                                                   {:attribs {:stroke       "lightgrey"
+                                                              :stroke-width (/ (* width
+                                                                                  (- 1.0
+                                                                                     margin-frac))
+                                                                               (- 2005
+                                                                                  1951))}})))
+                   viz/svg-plot2d-cartesian
+                   (quickthing/svg-wrap [width
+                                         height]
+                                        width))}}))
 
-
+(-> quickthing/rainbow
+    rest
+    butlast
+    vec
+    (get (Math/round (* 254
+                        (mod 190.3
+                             1.0)))))
 
 (pco/defresolver $klang-d18O-layer
   "Amount weighted averages"
@@ -1692,37 +1970,184 @@
             margin-frac
             klang-year-d18O]}]
   {::pco/output [{::klang-d18O-layer [::hiccup]}]}
-  {::klang-d18O-layer {::hiccup (-> (quickthing/secondary-axis [[1951
-                                                                 -6.0]
-                                                                [2005
-                                                                 -4.0]]
-                                                               {:width       width
-                                                                :height      height
-                                                                :x-name      "Year"
-                                                                :y-name      "d18O"
-                                                                :scale       scale
-                                                                :margin-frac margin-frac
-                                                                #_#_
-                                                                :color       "#0008"})
-                                    (update :data
-                                            #(into %
-                                                   (quickthing/dashed-line klang-year-d18O
-                                                                           {:scale   (/ scale
-                                                                                        10)
-                                                                            :attribs {:stroke "blue"}})))
-                                    (update :data
-                                            #(into %
-                                                   (quickthing/circles klang-year-d18O
-                                                                       {:scale   (/ scale
-                                                                                    10)
-                                                                        :attribs {:fill "blue"}})))
-                                    viz/svg-plot2d-cartesian
-                                    (quickthing/svg-wrap [width
-                                                          height]
-                                                         width))}})
+  {::klang-d18O-layer
+   {::hiccup
+    (-> (quickthing/secondary-axis [[1951
+                                     -6.0]
+                                    [2005
+                                     -4.0]]
+                                   {:width       width
+                                    :height      height
+                                    :x-name      "Year"
+                                    :y-name      "d18O"
+                                    :scale       scale
+                                    :margin-frac margin-frac
+                                    #_#_
+                                    :color       "#0008"})
+        #_#_#_
+        (assoc :grid
+               {:minor-x true
+                :minor-y false
+                :major-y false})
+        (assoc-in [:x-axis
+                   :visible]
+                  false)
+        (assoc-in [:x-axis
+                   :major]
+                  (range 1951
+                         2005))
+        (update :data
+                #(into %
+                       (quickthing/dashed-line klang-year-d18O
+                                               {:scale   (/ scale
+                                                            10)
+                                                :attribs {:stroke "blue"}})))
+        (update :data
+                #(into %
+                       (quickthing/circles (->> klang-year-d18O
+                                                (mapv (fn [[x
+                                                            y
+                                                            meta]]
+                                                        [x
+                                                         y
+                                                         {:radius (/ scale
+                                                                     10)
+                                                          :fill   "blue"
+                                                          #_(-> quickthing/rainbow
+                                                                      rest
+                                                                      butlast
+                                                                      vec
+                                                                      (get (Math/round (* 254
+                                                                                          (mod x
+                                                                                               1.0)))))}])))
+                                           {:scale (/ scale
+                                                      10)})))
+        viz/svg-plot2d-cartesian
+        (quickthing/svg-wrap [width
+                              height]
+                             width))}})
+
+(pco/defresolver $phuket-nakhon-fraction-layer
+  ""
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            nakhon-gauge
+            phuket-gauge
+            #_
+            big-rain-fraction]}]
+  {::pco/input [::width
+                ::height
+                ::scale
+                ::margin-frac
+                {::nakhon-gauge [{::ghcnd/annual-rain [:xy-nonil]}]}
+                {::phuket-gauge [{::ghcnd/annual-rain [:xy-nonil]}]}
+                #_#_#_#_
+                {::nakhon-winter-rain-totals [:xy-nonil]}
+                {::nakhon-annual-rain-totals [:xy-nonil]}
+                {::phuket-annual-rain-totals [:xy-nonil]}
+                {::big-rain-fraction [:xy-nonil]}]
+   ::pco/output [{::phuket-nakhon-fraction-layer [::hiccup]}]}
+  (let [phuket-annual-rain-xy (-> phuket-gauge
+                                  ::ghcnd/annual-rain
+                                  :xy-nonil)
+        nakhon-annual-rain-xy (-> nakhon-gauge
+                                  ::ghcnd/annual-rain
+                                  :xy-nonil)]
+    {::phuket-nakhon-fraction-layer
+     {::hiccup (-> (quickthing/primary-axis nakhon-annual-rain-xy
+                                            {:width            width
+                                             :height           height
+                                             :x-name           "Year"
+                                             :y-name           "Rain (mm)"
+                                             :y-breathing-room 0.8
+                                             :scale            scale
+                                             :margin-frac      margin-frac
+                                             #_#_
+                                             :color            "#0008"})
+                   (assoc-in [:y-axis
+                              :visible]
+                             true)
+                   #_
+                   (assoc-in [:y-axis
+                              :major]
+                             [])
+                   (assoc-in [:x-axis
+                              :minor] 
+                             (range 1951
+                                    2005))
+                   ;;#_
+                   (assoc :grid
+                          nil)
+                   (update :data
+                           #(into %
+                                  (quickthing/dashed-line nakhon-annual-rain-xy
+                                                          {:scale   (/ scale
+                                                                       10)
+                                                           :attribs {:stroke "red"}})))
+                   (update :data
+                           #(into %
+                                  (quickthing/circles (->> nakhon-annual-rain-xy
+                                                           (mapv (fn [[x
+                                                                       y
+                                                                       meta]]
+                                                                   [x
+                                                                    y
+                                                                    {:radius (/ scale
+                                                                                10)
+                                                                     :fill   "red"
+                                                                     #_(-> quickthing/rainbow
+                                                                           rest
+                                                                           butlast
+                                                                           vec
+                                                                           (get (Math/round (* 254
+                                                                                               (mod x
+                                                                                                    1.0)))))}])))
+                                                      {:scale (/ scale
+                                                                 10)})))
+                   #_
+                   (update :data
+                           #(into %
+                                  (quickthing/bars (mapv (fn [year]
+                                                           [year
+                                                            1.0])
+                                                         (range 1951.5
+                                                                2005.5))
+                                                   {:attribs {:stroke       "whitesmoke"
+                                                              :stroke-width (/ (* width
+                                                                                  1.0
+                                                                                  (- 1.0
+                                                                                     (* 2.2
+                                                                                        margin-frac)))
+                                                                               (- 2005
+                                                                                  1951))}})))
+                   #_
+                   (update :data
+                           #(into %
+                                  (quickthing/bars (->> big-rain-fraction
+                                                        :xy-nonil
+                                                        (mapv (fn [[year
+                                                                    amount]]
+                                                                [(+ year
+                                                                    0.5)
+                                                                 amount])))
+                                                   {:attribs {:stroke       "lightgrey"
+                                                              :stroke-width (/ (* width
+                                                                                  1.0
+                                                                                  (- 1.0
+                                                                                     (* 2.1
+                                                                                        margin-frac)))
+                                                                               (- 2005
+                                                                                  1951))}})))
+                   viz/svg-plot2d-cartesian
+                   (quickthing/svg-wrap [width
+                                         height]
+                                        width))}}))
 
 
-(pco/defresolver $annual-stats-subplot
+
+(pco/defresolver $klang-vs-nakhon-subplot
   "Amount weighted averages"
   [{::keys [width
             height
@@ -1732,11 +2157,56 @@
             nakhon-big-rain-count-layer
             nakhon-big-rain-fraction-layer
             klang-d18O-layer]}]
-  {::pco/output [{::annual-stats-subplot [::hiccup]}]}
-  {::annual-stats-subplot {::hiccup (-> (svg/group {}
+  {::pco/output [{::klang-vs-nakhon-subplot [::hiccup]}]}
+  {::klang-vs-nakhon-subplot {::hiccup (-> (svg/group {}
+                                                      #_(::hiccup nakhon-big-rain-fraction-layer)
+                                                      #_(::hiccup nakhon-big-rain-count-layer)
+                                                      (::hiccup nakhon-rain-layer)
+                                                      (::hiccup klang-d18O-layer))
+                                           (quickthing/svg-wrap [width
+                                                                 height]
+                                                                width))}})
+
+
+
+(pco/defresolver $klang-vs-nakhon-bigrainfraction-subplot
+  "Amount weighted averages"
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            nakhon-rain-layer
+            nakhon-big-rain-count-layer
+            nakhon-big-rain-fraction-layer
+            klang-d18O-layer]}]
+  {::pco/output [{::klang-vs-nakhon-bigrainfraction-subplot [::hiccup]}]}
+  {::klang-vs-nakhon-bigrainfraction-subplot {::hiccup (-> (svg/group {}
                                                    (::hiccup nakhon-big-rain-fraction-layer)
                                                    #_(::hiccup nakhon-big-rain-count-layer)
                                                    (::hiccup nakhon-rain-layer)
+                                                   (::hiccup klang-d18O-layer))
+                                        (quickthing/svg-wrap [width
+                                                              height]
+                                                             width))}})
+
+(pco/defresolver $klang-vs-phuket-nakhon-subplot
+  "Amount weighted averages"
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            #_#_#_
+            nakhon-rain-layer
+            nakhon-big-rain-count-layer
+            nakhon-big-rain-fraction-layer
+            phuket-nakhon-fraction-layer
+            klang-d18O-layer]}]
+  {::pco/output [{::klang-vs-phuket-nakhon-subplot [::hiccup]}]}
+  {::klang-vs-phuket-nakhon-subplot {::hiccup (-> (svg/group {}
+                                                   #_(::hiccup nakhon-big-rain-fraction-layer)
+                                                   #_(::hiccup nakhon-big-rain-count-layer)
+                                                   #_(::hiccup nakhon-rain-layer)
+                                                   (::hiccup phuket-nakhon-fraction-layer)
                                                    (::hiccup klang-d18O-layer))
                                         (quickthing/svg-wrap [width
                                                               height]
@@ -1762,8 +2232,11 @@
                      $index-layer
                      $index-subplot
                      $isotope-d18O-classified-average-subplot
-                     #_
+                     $nakhon-modern-rain-layer
+                     $nakhon-d18O-classified-average-subplot
+                     $d18O-below-select-layer
                      $index-d18O-subplot
+                     $index-d18O-big-events-subplot
                      $d18O-axis
                      $d18O-layer
                      $d18O-classified-layer
@@ -1789,8 +2262,11 @@
                      $nakhon-rain-layer
                      $nakhon-big-rain-count-layer
                      $nakhon-big-rain-fraction-layer
+                     $phuket-nakhon-fraction-layer
                      $klang-d18O-layer
-                     $annual-stats-subplot])
+                     $klang-vs-nakhon-subplot
+                     $klang-vs-nakhon-bigrainfraction-subplot
+                     $klang-vs-phuket-nakhon-subplot])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
 

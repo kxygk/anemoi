@@ -1,5 +1,7 @@
 (ns kxygk.anemoi.central
   (:require [kxygk.anemoi.airport :as airport]
+            [kxygk.anemoi.ghcnd :as ghcnd]
+            [kxygk.anemoi.nakhon :as nakhon]
             [kxygk.anemoi.plot :as plot]
             [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd :as tmd]
@@ -24,7 +26,35 @@
          ::climate-index-filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
                                       "climate-index.csv")
          ::nakhon-filestr        (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                      "TH000048552.csv")
+                                      ;;#_
+                                      "TH000048552"
+                                      ;; NAKHON - Winter storm target location
+                                      #_
+                                      "TH000048564"
+                                      ;;PHUKET - Exposed West Coast            ***
+                                      #_
+                                      "TH000048565"
+                                      ;;PHUKET AIRPORT - Shielded West Coast
+                                      #_
+                                      "TH000048551"
+                                      ;;SURAT THANI - Midpoint (middle of map) ***
+                                      #_
+                                      "TH000048567"
+                                      ;;TRANG - West Side of the Nakhon Range  ***
+                                      #_
+                                      "TH000048568"
+                                      ;;SONGKHLA - Southern East Coast
+                                      ".csv")
+         ;; *** -> start on Jan 1st 1951
+         ;;
+         ;; From: https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt
+         ;; TH000048551   9.1170   99.1500   11.0    SURAT THANI   
+         ;; TH000048552   8.5330   99.9500    9.0    NAKHON SI THAMMARAT
+         ;; TH000048564   7.8830   98.4000    3.0    PHUKET
+         ;; TH000048565   8.1320   98.3170    9.0    PHUKET AIRPORT
+         ;; TH000048567   7.5170   99.6170   16.0    TRANG
+         ;; TH000048568   7.2000  100.6170    9.0    SONGKHLA
+         ;; TH000048569   6.9170  100.4330   35.0    HAT YAI
          ::klang-filestr         (str "/home/kxygk/Data/Tan2019/"
                                       "modern-part.csv")
          ::crazy-dates           #{#time/date "2017-07-30"}
@@ -44,11 +74,15 @@
 
 (pco/defresolver $single-figures
   [inputs]
-  {::pco/input  [::airport/full-table
-                 ::airport/nakhon-table
-                 ::airport/nakhon-annual-rain-totals
-                 ::airport/nakhon-annual-winter-storm-fraction
-                 ::airport/nakhon-annual-winter-storm-count
+  {::pco/input  [::start-date
+                 ::end-date
+                 ::big-storm-mm
+                 ::airport/full-table
+                 ::nakhon/nakhon-table
+                 ::nakhon/nakhon-modern-table
+                 ::nakhon/nakhon-annual-rain-totals
+                 ::nakhon/nakhon-annual-winter-storm-fraction
+                 ::nakhon/nakhon-annual-winter-storm-count
                  ::airport/klang-year-d18O
                  :above-index-threshold
                  :below-index-threshold
@@ -69,74 +103,165 @@
         both-filt    #(or (above-filt %)
                           (below-filt %))]
     {::single-figures {
-                       ::plot/width              3800 ;;1800
-                       ::plot/height             1300
-                       ::plot/scale              100
-                       ::plot/margin-frac        0.1
-                       ::plot/table              (::airport/full-table inputs)
+                       ::plot/width                     1800
+                       ::plot/height                    1300
+                       ::plot/scale                     100
+                       ::plot/margin-frac               0.1
+                       #_#_
+                       ::plot/table                     (::airport/full-table inputs)
                        ;;
-                       ::plot/d18O-rain          {::tmd/x-key           :d18O
-                                                  ::tmd/y-key           :Rain-mm
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   both-filt}
-                       ::plot/rain-data          {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :Rain-mm
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   both-filt}
-                       ::plot/d18O-data          {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :d18O
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   both-filt}
-                       ::plot/d18O-above-data    {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :d18O
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   above-filt}
-                       ::plot/d18O-below-data    {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :d18O
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   below-filt}
-                       ::plot/d18O-rain-above    {::tmd/x-key           :d18O
-                                                  ::tmd/y-key           :Rain-mm
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   above-filt}
-                       ::plot/d18O-rain-below    {::tmd/x-key           :d18O
-                                                  ::tmd/y-key           :Rain-mm
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   below-filt}
+                       ::plot/d18O-rain                 {::tmd/x-key           :d18O
+                                                         ::tmd/y-key           :Rain-mm
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   both-filt}
+                       ::plot/rain-data                 {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :Rain-mm
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   both-filt}
+                       ::plot/d18O-data                 {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :d18O
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   both-filt}
+                       ::plot/d18O-extremes-data        {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :d18O
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   #(> (:Below-Index %)
+                                                                                   0.06)}
+                       ::plot/d18O-other-data           {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :d18O
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   #(< (:Below-Index %)
+                                                                                   0.06)}
+                       ::plot/d18O-above-data           {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :d18O
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-below-data           {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :d18O
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   below-filt}
+                       ::plot/d18O-rain-above           {::tmd/x-key           :d18O
+                                                         ::tmd/y-key           :Rain-mm
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-rain-below           {::tmd/x-key           :d18O
+                                                         ::tmd/y-key           :Rain-mm
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   below-filt}
                        ;;
                        ;; d18O vs Monsoon
-                       ::plot/d18O-monsoon-above {::tmd/x-key           :d18O
-                                                  ::tmd/y-key           :Above-Index
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   above-filt}
-                       ::plot/d18O-monsoon-below {::tmd/x-key           :d18O
-                                                  ::tmd/y-key           :Below-Index
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   below-filt}
-                       ::plot/d18O-range-min     -25
-                       ::plot/d18O-range-max     10
-                       ::plot/above?-data        {::tmd/x-key :d18O
-                                                  ::tmd/y-key :Above?
-                                                  ::tmd/table (::airport/full-table inputs)}
-                       ::plot/index-above        {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :Above-Index
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   above-filt}
-                       ::plot/index-below        {::tmd/x-key           :Day
-                                                  ::tmd/y-key           :Below-Index
-                                                  ::tmd/table-to-filter (::airport/full-table inputs)
-                                                  ::tmd/col-filter-fn   below-filt}
-                       ::plot/cycle-start-value  (::cycle-start-value inputs)
-                       ::plot/cycle-length       (::cycle-length inputs)
-                       ::plot/cycle-phase        (::cycle-phase inputs)
-                       ::plot/klang-year-d18O    (::airport/klang-year-d18O inputs)
-                       ::plot/rain-totals        (::airport/nakhon-annual-rain-totals inputs)
-                       ::plot/nakhon-rain        {::tmd/x-key :Day
-                                                  ::tmd/y-key :PRCP
-                                                  ::tmd/table (::airport/nakhon-table inputs)}
-                       ::plot/big-rain-fraction  (::airport/nakhon-annual-winter-storm-fraction inputs)
-                       ::plot/big-rain-counts    (::airport/nakhon-annual-winter-storm-count inputs)
+                       ::plot/d18O-monsoon-above        {::tmd/x-key           :d18O
+                                                         ::tmd/y-key           :Above-Index
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   above-filt}
+                       ::plot/d18O-monsoon-below        {::tmd/x-key           :d18O
+                                                         ::tmd/y-key           :Below-Index
+                                                         ::tmd/meta-keys       [:Rain-mm]
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   below-filt}
+                       ::plot/d18O-range-min            -25
+                       ::plot/d18O-range-max            10
+                       ::plot/above?-data               {::tmd/x-key :d18O
+                                                         ::tmd/y-key :Above?
+                                                         ::tmd/table (::airport/full-table inputs)}
+                       ::plot/index-above               {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :Above-Index
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   above-filt}
+                       ::plot/index-below               {::tmd/x-key           :Day
+                                                         ::tmd/y-key           :Below-Index
+                                                         ::tmd/table-to-filter (::airport/full-table inputs)
+                                                         ::tmd/col-filter-fn   below-filt}
+                       ::plot/cycle-start-value         (::cycle-start-value inputs)
+                       ::plot/cycle-length              (::cycle-length inputs)
+                       ::plot/cycle-phase               (::cycle-phase inputs)
+                       ::plot/klang-year-d18O           (::airport/klang-year-d18O inputs)
+                       ::plot/nakhon-gauge {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048552"
+                                                                                        ".csv")
+                                            ::ghcnd/storm-threshold-mm 100.0}
+                       ::plot/nakhon-gauge-modern {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048552"
+                                                                                        ".csv")
+                                                   ::ghcnd/storm-threshold-mm 100.0
+                                                   ::ghcnd/start-date        (-> inputs
+                                                                                 ::start-date)
+                                                   ::ghcnd/end-date          (-> inputs
+                                                                                 ::end-date)}
+                       ::plot/phuket-gauge {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048564"
+                                                                                        ".csv")
+                                            ::ghcnd/storm-threshold-mm 100.0}
+                       ::plot/phuket-gauge-modern {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048564"
+                                                                                        ".csv")
+                                                   ::ghcnd/storm-threshold-mm 100.0
+                                                   ::ghcnd/start-date        (-> inputs
+                                                                                 ::start-date)
+                                                   ::ghcnd/end-date          (-> inputs
+                                                                                 ::end-date)}
+                       #_#_#_#_
+                       ::plot/nakhon-annual-rain-totals {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048552"
+                                                                                        ".csv")
+                                                         ::ghcnd/annual-rain-totals true}
+                       ::plot/nakhon-winter-rain-totals {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048552"
+                                                                                        ".csv")
+                                                         ::ghcnd/big-rain-total true}
+                       ::plot/phuket-rain               {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048564"
+                                                                                        ".csv")}
+                       ::plot/phuket-annual-rain-totals {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        "TH000048564"
+                                                                                        ".csv")
+                                                         ::ghcnd/annual-rain-totals true}
+                       ::plot/nakhon-rain               {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                        ;;#_
+                                                                                        "TH000048564"
+                                                                                        #_
+                                                                                        "TH000048552"
+                                                                                        ".csv")}
+                       ::plot/nakhon-modern-rain {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                 "TH000048552"
+                                                                                 ".csv")
+                                                  ::ghcnd/start-date        (-> inputs
+                                                                                ::start-date)
+                                                  ::ghcnd/end-date          (-> inputs
+                                                                                ::end-date)}
+                       ::plot/big-rain-fraction  {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                 "TH000048552"
+                                                                                 ".csv")
+                                                  ::ghcnd/big-rain-fraction true
+                                                  ::ghcnd/big-storm-mm      (-> inputs
+                                                                                ::big-storm-mm)}
+                       ::plot/big-rain-counts    {::ghcnd/raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                                 "TH000048552"
+                                                                                 ".csv")
+                                                  ::ghcnd/big-rain-count    true
+                                                  ::ghcnd/big-storm-mm      (-> inputs
+                                                                                ::big-storm-mm)}
+                       #_                        (::nakhon/nakhon-annual-winter-storm-count inputs)
                        }}))
+
+#_
+(let [figs (->> [{::single-figures [{::plot/nakhon-gauge [{::ghcnd/annual-rain [:y]}]}]}]
+                (p.a.eql/process env
+                                 (merge @*state
+                                        {::big-storm-mm 100.0}))
+                deref
+                ::single-figures)]
+  (->> figs
+       ::plot/nakhon-gauge
+       ::ghcnd/annual-rain
+       :y))
+
 
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
@@ -146,6 +271,9 @@
                                     {::plot/rain-d18O-classified-subplot [::plot/svg]}
                                     {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
                                     {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/index-d18O-subplot [::plot/svg]}
+                                    {::plot/index-d18O-big-events-subplot [::plot/svg]}
                                     {::plot/hist-count-all-subplot [::plot/svg]}
                                     {::plot/hist-count-classified-subplot [::plot/svg]}
                                     {::plot/hist-count-subplot [::plot/svg]}
@@ -153,14 +281,59 @@
                                     {::plot/hist-rain-classified-subplot [::plot/svg]}
                                     {::plot/hist-rain-subplot [::plot/svg]}
                                     {::plot/hist-monsoon-classified-subplot [::plot/svg]}
-                                    {::plot/nakhon-rain-layer [::plot/svg] }
-                                    {::plot/nakhon-big-rain-count-layer [::plot/svg] }
-                                    {::plot/nakhon-big-rain-fraction-layer [::plot/svg] }
-                                    {::plot/klang-d18O-layer [::plot/svg] }
-                                    {::plot/annual-stats-subplot [::plot/svg] }]}]
+                                    {::plot/klang-vs-nakhon-subplot [::plot/svg] }
+                                    {::plot/klang-vs-nakhon-bigrainfraction-subplot [::plot/svg] }
+                                    {::plot/klang-vs-phuket-nakhon-subplot [::plot/svg] }
+                                    ]}]
                     (p.a.eql/process env
                                      (merge @*state
-                                            {::big-storm-mm 110.0}))
+                                            {::ghcnd/storm-threshold-mm 100.0}))
+                    deref
+                    ::single-figures)]
+      (->> figs
+           (mapv (fn [[key
+                       value]]
+                   (->> value
+                        ::plot/svg
+                        (spit (str "./out/all-"
+                                   (name key)
+                                   ".svg")))))))
+
+
+
+#_
+(let [figs (->> [{::single-figures [{::plot/phuket-annual-rain-totals [:xy-nonil]}]}]
+                (p.a.eql/process env
+                                 (merge @*state
+                                        {::big-storm-mm 100.0}))
+                deref
+                ::single-figures)]
+  (->> figs
+       ::plot/phuket-annual-rain-totals))
+#_
+(let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
+                                    {::plot/index-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                    {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
+                                    {::plot/index-d18O-subplot [::plot/svg]}
+                                    {::plot/index-d18O-big-events-subplot [::plot/svg]}
+                                    {::plot/hist-count-all-subplot [::plot/svg]}
+                                    {::plot/hist-count-classified-subplot [::plot/svg]}
+                                    {::plot/hist-count-subplot [::plot/svg]}
+                                    {::plot/hist-rain-all-subplot [::plot/svg]}
+                                    {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                    {::plot/hist-rain-subplot [::plot/svg]}
+                                    {::plot/hist-monsoon-classified-subplot [::plot/svg]}
+                                    {::plot/klang-vs-nakhon-subplot [::plot/svg] }      ;; $
+                                    {::plot/klang-vs-nakhon-bigrainfraction-subplot [::plot/svg] }
+                                    {::plot/klang-vs-phuket-nakhon-subplot [::plot/svg] }]}]
+                    (p.a.eql/process env
+                                     (merge @*state
+                                            {::big-storm-mm 100.0}))
                     deref
                     ::single-figures)]
       (->> figs
@@ -200,6 +373,14 @@
                     (spit (str "./out/bigmonsoon-"
                                (name key)
                                ".svg")))))))
+
+(conj [1 2] {:radius 10})
+
+(merge {:stroke-width 5
+        :stroke       "#000f"}
+       {}
+       {:radius 10})
+
 
 #_
 (->> [::airport/below-table]
@@ -332,32 +513,47 @@
                      ::plot/scale              100
                      ::plot/margin-frac        0.1
                      ::plot/table (::airport/full-table inputs)
-                     ::plot/rain-totals (::airport/nakhon-annual-rain-totals inputs)
-                     ::plot/big-rain-totals (::airport/nakhon-annual-rain-totals inputs)
+                     ::plot/rain-totals (::nakhon/nakhon-annual-rain-totals inputs)
+                     ::plot/big-rain-totals (::nakhon/nakhon-annual-rain-totals inputs)
                      ::plot/big-storm-mm 80.0}})
 (identity @*state)
 
 #_
-(->> [::airport/nakhon-annual-winter-storm-fraction]
+(->> [::nakhon/nakhon-annual-winter-storm-fraction]
      (p.a.eql/process env
                       @*state)
      deref
-     ::airport/nakhon-annual-winter-storm-fraction
+     ::nakhon/nakhon-annual-winter-storm-fraction
      vec)
 
 #_
-(->> [::airport/nakhon-annual-winter-storm-count]
+(->> [::nakhon/nakhon-annual-winter-storm-count]
      (p.a.eql/process env
                       @*state)
      deref
-     ::airport/nakhon-annual-winter-storm-count
+     ::nakhon/nakhon-annual-winter-storm-count
      vec)
+
 #_
-(->> [::airport/nakhon-annual-rain-totals]
+(->> [::nakhon/nakhon-by-year]
      (p.a.eql/process env
                       @*state)
      deref
-     ::airport/nakhon-annual-rain-totals)
+     ::nakhon/nakhon-by-year
+     vec)
+
+#_
+(->> [::nakhon/nakhon-table]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::nakhon/nakhon-table)
+#_
+(->> [::nakhon/nakhon-modern-table]
+     (p.a.eql/process env
+                      @*state)
+     deref
+     ::nakhon/nakhon-modern-table)
 #_
 (->> [::airport/klang-table
       ::airport/klang-year-d18O]
@@ -525,6 +721,8 @@
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
                     [airport/env
+                     nakhon/env
+                     ghcnd/env
                      stat/env
                      tmd/env
                      (pbir/equivalence-resolver ::airport/enso-filestr
@@ -539,6 +737,7 @@
                                                 ::start-date)
                      (pbir/equivalence-resolver ::airport/end-date
                                                 ::end-date)
+                     #_
                      (pbir/equivalence-resolver ::airport/nakhon-filestr
                                                 ::nakhon-filestr)
                      (pbir/equivalence-resolver ::airport/klang-filestr
