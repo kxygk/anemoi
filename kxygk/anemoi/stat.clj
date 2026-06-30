@@ -5,7 +5,10 @@
             [com.wsscode.pathom3.connect.planner :as pcp]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.operation :as pco]
+            [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
+            [tick.core                    :as tick]
+            [tick.locale-en-us]
             [promesa.core :as p]))
 
 (pco/defresolver $data-vec-identity
@@ -212,6 +215,22 @@
                     ::standard-std  std
                     ::standard-sdom (/ std
                                        (clojure.math/sqrt num))}))))
+(def $year-fraction
+  (pbir/single-attr-resolver :Date
+                             :cycle-fraction
+                             (fn [date]
+                               (let [start-of-given-year (-> date
+                                                             tick/first-day-of-year)
+                                     ended-of-given-year (-> date
+                                                             tick/first-day-of-year)
+                                     days-in-year        (tick/between start-of-given-year
+                                                                       ended-of-given-year
+                                                                       :days)
+                                     day-num-of-date     (tick/between start-of-given-year
+                                                                       date
+                                                                       :days)]
+                                 (/ day-num-of-date
+                                    days-in-year)))))
 
 (def plan-cache*
   (atom {}))
@@ -224,7 +243,8 @@
                      $standard
                      $weighted
                      $hist-standard
-                     $hist-weighted])
+                     $hist-weighted
+                     $year-fraction])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
 

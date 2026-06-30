@@ -790,10 +790,6 @@
                                                                                           (vec (:Rain-mm other-events-table))
                                                                                           (vec (:d18O other-events-table))))
                                                                            (apply + (vec (:Rain-mm other-events-table))))]
-                                           (println (str "AVERAGE Extreme d18O"
-                                                         extreme-weighted-average))
-                                           (println (str "AVERAGE Other d18O"
-                                                         other-weighted-average))
                                            (-> d18O-axis
                                                (assoc :legend
                                                       [["WINTER STORM"
@@ -1757,7 +1753,7 @@
                     :days))
 
 (pco/defresolver $nakhon-rain-layer
-  "Amount weighted averages"
+  ""
   [{::keys [width
             height
             scale
@@ -1808,6 +1804,22 @@
                                                                                                             ::ghcnd/daily-rain
                                                                                                             :y
                                                                                                             :data-vec)))}})))
+                                     #_
+                                     (update :data
+                                             #(into %
+                                                    (quickthing/circles (-> nakhon-gauge
+                                                                            ::ghcnd/daily-rain
+                                                                            :xy-nonil)
+                                                                        {:stroke-width 0.0 #_ "none"
+                                                                         :scale (/ scale
+                                                                                   10)}
+                                                                        #_
+                                                                        {:attribs {:stroke       "black"
+                                                                                :stroke-width (/ width
+                                                                                                 (count (-> nakhon-gauge
+                                                                                                            ::ghcnd/daily-rain
+                                                                                                            :y
+                                                                                                            :data-vec)))}})))
                                      viz/svg-plot2d-cartesian
                                      (quickthing/svg-wrap [width
                                                            height]
@@ -1815,7 +1827,7 @@
 
 
 (pco/defresolver $nakhon-big-rain-fraction-layer
-  "Amount weighted averages"
+  ""
   [{::keys [width
             height
             scale
@@ -1830,6 +1842,10 @@
   (let [fraction-xy (-> nakhon-gauge
                         ::ghcnd/annual-storm-fraction
                         :xy-nonil)]
+    (println (str "IN: "
+                  "$nakhon-big-rain-fraction-layer "
+                  "Fractions: "
+                  fraction-xy))
   {::nakhon-big-rain-fraction-layer
    {::hiccup (-> (quickthing/primary-axis [[1951
                                             0]
@@ -1894,7 +1910,7 @@
 
 
 (pco/defresolver $nakhon-big-rain-count-layer
-  "Amount weighted averages"
+  ""
   [{::keys [width
             height
             scale
@@ -1904,10 +1920,10 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/annual-storm-count [:xy-nonil]}]}]
+                 {::nakhon-gauge [{::ghcnd/winter-storm-count [:xy-nonil]}]}]
    ::pco/output [{::nakhon-big-rain-count-layer [::hiccup]}]}
   (let [count-xy (-> nakhon-gauge
-                     ::ghcnd/annual-storm-count
+                     ::ghcnd/winter-storm-count
                      :xy-nonil)]
     {::nakhon-big-rain-count-layer
      {::hiccup (-> (quickthing/primary-axis [[1951.0
@@ -2012,8 +2028,11 @@
                                                          y
                                                          {:radius (/ scale
                                                                      10)
-                                                          :fill   "blue"
-                                                          #_(-> quickthing/rainbow
+                                                          :fill
+                                                          ;;#_
+                                                          "blue"
+                                                          #_
+                                                          (-> quickthing/rainbow
                                                                       rest
                                                                       butlast
                                                                       vec
@@ -2027,7 +2046,7 @@
                               height]
                              width))}})
 
-(pco/defresolver $phuket-nakhon-fraction-layer
+(pco/defresolver $phuket-nakhon-annual-rain-layer
   ""
   [{::keys [width
             height
@@ -2037,33 +2056,40 @@
             phuket-gauge
             #_
             big-rain-fraction]}]
-  {::pco/input [::width
+  {::pco/input  [::width
                 ::height
                 ::scale
                 ::margin-frac
-                {::nakhon-gauge [{::ghcnd/annual-rain [:xy-nonil]}]}
-                {::phuket-gauge [{::ghcnd/annual-rain [:xy-nonil]}]}
-                #_#_#_#_
-                {::nakhon-winter-rain-totals [:xy-nonil]}
-                {::nakhon-annual-rain-totals [:xy-nonil]}
-                {::phuket-annual-rain-totals [:xy-nonil]}
-                {::big-rain-fraction [:xy-nonil]}]
-   ::pco/output [{::phuket-nakhon-fraction-layer [::hiccup]}]}
-  (let [phuket-annual-rain-xy (-> phuket-gauge
-                                  ::ghcnd/annual-rain
-                                  :xy-nonil)
-        nakhon-annual-rain-xy (-> nakhon-gauge
-                                  ::ghcnd/annual-rain
-                                  :xy-nonil)]
-    {::phuket-nakhon-fraction-layer
-     {::hiccup (-> (quickthing/primary-axis nakhon-annual-rain-xy
+                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy-all]}
+                                  {::ghcnd/winter-storm-rain [:xy-all]}]}
+                 {::phuket-gauge [{::ghcnd/annual-rain [:xy-all]}]}]
+   ::pco/output [{::phuket-nakhon-annual-rain-layer [::hiccup]}]}
+  (let [phuket-rain-xy (-> phuket-gauge
+                           ::ghcnd/annual-rain
+                           :xy-all)
+        nakhon-rain-xy (-> nakhon-gauge
+                           ::ghcnd/winter-storm-rain
+                           :xy-all)]
+    {::phuket-nakhon-annual-rain-layer
+     {::hiccup (-> (quickthing/primary-axis (into nakhon-rain-xy
+                                                  phuket-rain-xy)
                                             {:width            width
                                              :height           height
                                              :x-name           "Year"
-                                             :y-name           "Rain (mm)"
-                                             :y-breathing-room 0.8
+                                             :y-name           ""
+                                             :y-breathing-room 1.0
                                              :scale            scale
                                              :margin-frac      margin-frac
+                                             :legend      [["Phuket Rain"
+                                                            {:fill   "green"
+                                                             :stroke nil}]
+                                                           ["Nakhon Rain"
+                                                            {:fill   "red"
+                                                             :stroke nil}]
+                                                           #_
+                                                           ["WINTER MONSOON"
+                                                            {:fill   winter-color
+                                                             :stroke nil}]]
                                              #_#_
                                              :color            "#0008"})
                    (assoc-in [:y-axis
@@ -2080,15 +2106,16 @@
                    ;;#_
                    (assoc :grid
                           nil)
+                   ;; Nakhon
                    (update :data
                            #(into %
-                                  (quickthing/dashed-line nakhon-annual-rain-xy
+                                  (quickthing/dashed-line nakhon-rain-xy
                                                           {:scale   (/ scale
                                                                        10)
                                                            :attribs {:stroke "red"}})))
                    (update :data
                            #(into %
-                                  (quickthing/circles (->> nakhon-annual-rain-xy
+                                  (quickthing/circles (->> nakhon-rain-xy
                                                            (mapv (fn [[x
                                                                        y
                                                                        meta]]
@@ -2096,50 +2123,128 @@
                                                                     y
                                                                     {:radius (/ scale
                                                                                 10)
-                                                                     :fill   "red"
-                                                                     #_(-> quickthing/rainbow
-                                                                           rest
-                                                                           butlast
-                                                                           vec
-                                                                           (get (Math/round (* 254
-                                                                                               (mod x
-                                                                                                    1.0)))))}])))
+                                                                     :fill   "red"}])))
                                                       {:scale (/ scale
                                                                  10)})))
-                   #_
+                   ;; Phuket
                    (update :data
                            #(into %
-                                  (quickthing/bars (mapv (fn [year]
-                                                           [year
-                                                            1.0])
-                                                         (range 1951.5
-                                                                2005.5))
-                                                   {:attribs {:stroke       "whitesmoke"
-                                                              :stroke-width (/ (* width
-                                                                                  1.0
-                                                                                  (- 1.0
-                                                                                     (* 2.2
-                                                                                        margin-frac)))
-                                                                               (- 2005
-                                                                                  1951))}})))
-                   #_
+                                  (quickthing/dashed-line phuket-rain-xy
+                                                          {:scale   (/ scale
+                                                                       10)
+                                                           :attribs {:stroke "green"}})))
                    (update :data
                            #(into %
-                                  (quickthing/bars (->> big-rain-fraction
-                                                        :xy-nonil
-                                                        (mapv (fn [[year
-                                                                    amount]]
-                                                                [(+ year
-                                                                    0.5)
-                                                                 amount])))
-                                                   {:attribs {:stroke       "lightgrey"
-                                                              :stroke-width (/ (* width
-                                                                                  1.0
-                                                                                  (- 1.0
-                                                                                     (* 2.1
-                                                                                        margin-frac)))
-                                                                               (- 2005
-                                                                                  1951))}})))
+                                  (quickthing/circles (->> phuket-rain-xy
+                                                           (mapv (fn [[x
+                                                                       y
+                                                                       meta]]
+                                                                   [x
+                                                                    y
+                                                                    {:radius (/ scale
+                                                                                10)
+                                                                     :fill   "green"
+                                                                     #_      (-> quickthing/rainbow
+                                                                                 rest
+                                                                                 butlast
+                                                                                 vec
+                                                                                 (get (Math/round (* 254
+                                                                                                     (mod x
+                                                                                                          1.0)))))}])))
+                                                      {:scale (/ scale
+                                                                 10)})))
+                   viz/svg-plot2d-cartesian
+                   (quickthing/svg-wrap [width
+                                         height]
+                                        width))}}))
+
+
+(pco/defresolver $phuket-nakhon-annual-fraction-layer
+  ""
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            nakhon-gauge
+            phuket-gauge
+            #_
+            big-rain-fraction]}]
+  {::pco/input  [::width
+                 ::height
+                 ::scale
+                 ::margin-frac
+                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy-all]}
+                                  {::ghcnd/winter-storm-rain [:xy-all]}]}
+                 {::phuket-gauge [{::ghcnd/annual-rain [:xy-all]}]}
+                 #_#_#_#_
+                 {::nakhon-winter-rain-totals [:xy-nonil]}
+                 {::nakhon-annual-rain-totals [:xy-nonil]}
+                 {::phuket-annual-rain-totals [:xy-nonil]}
+                 {::big-rain-fraction [:xy-nonil]}]
+   ::pco/output [{::phuket-nakhon-annual-fraction-layer [::hiccup]}]}
+  (let [phuket-rain-xy  (-> phuket-gauge
+                            ::ghcnd/annual-rain
+                            :xy-all)
+        nakhon-rain-xy  (-> nakhon-gauge
+                            ::ghcnd/winter-storm-rain
+                            :xy-all)
+        winter-fraction (mapv (fn [[year
+                                    phuket-rain]
+                                   [_
+                                    nakhon-rain]]
+                                [year
+                                 (+ 0.0
+                                    (/ nakhon-rain
+                                       (+ phuket-rain
+                                          nakhon-rain)))])
+                              phuket-rain-xy
+                              nakhon-rain-xy)]
+    {::phuket-nakhon-annual-fraction-layer
+     {::hiccup (-> (quickthing/primary-axis (into [[1951 0.0]]
+                                                  winter-fraction)
+                                            {:width            width
+                                             :height           height
+                                             :x-name           "Year"
+                                             :y-name           "Non-Storm Fraction (est)"
+                                             :y-breathing-room 0.5
+                                             :scale            scale
+                                             :margin-frac      margin-frac
+                                             #_#_
+                                             :color            "#0008"})
+                   (assoc-in [:y-axis
+                              :visible]
+                             false)
+                   #_
+                   (assoc-in [:y-axis
+                              :major]
+                             [])
+                   (assoc-in [:x-axis
+                              :minor] 
+                             (range 1951
+                                    2005))
+                   ;;#_
+                   (assoc :grid
+                          nil)
+                   ;; Winter Fraction Calc
+                   (update :data
+                           #(into %
+                                  (quickthing/dashed-line winter-fraction
+                                                          {:scale   (/ scale
+                                                                       10)
+                                                           :attribs {:stroke "black"}})))
+                   (update :data
+                           #(into %
+                                  (quickthing/circles (->> winter-fraction
+                                                           (mapv (fn [[x
+                                                                       y
+                                                                       meta]]
+                                                                   [x
+                                                                    y
+                                                                    {:radius (/ scale
+                                                                                10)
+                                                                     :fill   "black"}])))
+                                                      {:scale (/ scale
+                                                                 10)})))
                    viz/svg-plot2d-cartesian
                    (quickthing/svg-wrap [width
                                          height]
@@ -2169,25 +2274,49 @@
 
 
 
-(pco/defresolver $klang-vs-nakhon-bigrainfraction-subplot
+(pco/defresolver $klang-vs-nakhon-bigrain-fraction-subplot
   "Amount weighted averages"
   [{::keys [width
             height
             scale
             margin-frac
             nakhon-rain-layer
-            nakhon-big-rain-count-layer
             nakhon-big-rain-fraction-layer
+            #_
+            nakhon-big-rain-count-layer
             klang-d18O-layer]}]
-  {::pco/output [{::klang-vs-nakhon-bigrainfraction-subplot [::hiccup]}]}
-  {::klang-vs-nakhon-bigrainfraction-subplot {::hiccup (-> (svg/group {}
-                                                   (::hiccup nakhon-big-rain-fraction-layer)
-                                                   #_(::hiccup nakhon-big-rain-count-layer)
-                                                   (::hiccup nakhon-rain-layer)
-                                                   (::hiccup klang-d18O-layer))
-                                        (quickthing/svg-wrap [width
-                                                              height]
-                                                             width))}})
+  {::pco/output [{::klang-vs-nakhon-bigrain-fraction-subplot [::hiccup]}]}
+  {::klang-vs-nakhon-bigrain-fraction-subplot {::hiccup (-> (svg/group {}
+                                                                      (::hiccup nakhon-big-rain-fraction-layer)
+                                                                      #_(::hiccup nakhon-big-rain-count-layer)
+                                                                      (::hiccup nakhon-rain-layer)
+                                                                      (::hiccup klang-d18O-layer))
+                                                           (quickthing/svg-wrap [width
+                                                                                 height]
+                                                                                width))}})
+
+
+(pco/defresolver $klang-vs-nakhon-bigrain-count-subplot
+  "Amount weighted averages"
+  [{::keys [width
+            height
+            scale
+            margin-frac
+            nakhon-rain-layer
+            #_
+            nakhon-big-rain-fraction-layer
+            nakhon-big-rain-count-layer
+            klang-d18O-layer]}]
+  {::pco/output [{::klang-vs-nakhon-bigrain-count-subplot [::hiccup]}]}
+  {::klang-vs-nakhon-bigrain-count-subplot {::hiccup (-> (svg/group {}
+                                                                      #_(::hiccup nakhon-big-rain-fraction-layer)
+                                                                      (::hiccup nakhon-big-rain-count-layer)
+                                                                      (::hiccup nakhon-rain-layer)
+                                                                      (::hiccup klang-d18O-layer))
+                                                           (quickthing/svg-wrap [width
+                                                                                 height]
+                                                                                width))}})
+
 
 (pco/defresolver $klang-vs-phuket-nakhon-subplot
   "Amount weighted averages"
@@ -2199,18 +2328,22 @@
             nakhon-rain-layer
             nakhon-big-rain-count-layer
             nakhon-big-rain-fraction-layer
-            phuket-nakhon-fraction-layer
+            phuket-nakhon-annual-rain-layer
+            phuket-nakhon-annual-fraction-layer
             klang-d18O-layer]}]
   {::pco/output [{::klang-vs-phuket-nakhon-subplot [::hiccup]}]}
   {::klang-vs-phuket-nakhon-subplot {::hiccup (-> (svg/group {}
-                                                   #_(::hiccup nakhon-big-rain-fraction-layer)
-                                                   #_(::hiccup nakhon-big-rain-count-layer)
-                                                   #_(::hiccup nakhon-rain-layer)
-                                                   (::hiccup phuket-nakhon-fraction-layer)
-                                                   (::hiccup klang-d18O-layer))
-                                        (quickthing/svg-wrap [width
-                                                              height]
-                                                             width))}})
+                                                             #_(::hiccup nakhon-big-rain-fraction-layer)
+                                                             #_(::hiccup nakhon-big-rain-count-layer)
+                                                             #_(::hiccup nakhon-rain-layer)
+                                                             #_q
+                                                             (::hiccup phuket-nakhon-annual-rain-layer)
+                                                             ;;#_
+                                                             (::hiccup phuket-nakhon-annual-fraction-layer)
+                                                             (::hiccup klang-d18O-layer))
+                                                  (quickthing/svg-wrap [width
+                                                                        height]
+                                                                       width))}})
 
 (def plan-cache*
   (atom {}))
@@ -2262,10 +2395,12 @@
                      $nakhon-rain-layer
                      $nakhon-big-rain-count-layer
                      $nakhon-big-rain-fraction-layer
-                     $phuket-nakhon-fraction-layer
+                     $phuket-nakhon-annual-fraction-layer
+                     $phuket-nakhon-annual-rain-layer
                      $klang-d18O-layer
                      $klang-vs-nakhon-subplot
-                     $klang-vs-nakhon-bigrainfraction-subplot
+                     $klang-vs-nakhon-bigrain-fraction-subplot
+                     $klang-vs-nakhon-bigrain-count-subplot
                      $klang-vs-phuket-nakhon-subplot])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))

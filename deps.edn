@@ -1,24 +1,26 @@
-{:deps  {com.wsscode/pathom3         {:mvn/version "2025.01.16-alpha"}
-         funcool/promesa             {:mvn/version "12.0.0-RC2"}
-         cljfx/cljfx                 {:mvn/version "1.10.6"}
+{:deps  {com.wsscode/pathom3                      {:mvn/version "2025.01.16-alpha"}
+         ;;com.wsscode/pathom-viz-connector         {:mvn/version "2021.04.20"}
+         funcool/promesa                          {:mvn/version "12.0.0-RC2"}
+         cljfx/cljfx                              {:mvn/version "1.10.6"}
          ;;
-         kxygk/pathmore              {:local/root "../pathmore"}
-         kxygk/pathomfx              {:local/root "../pathomfx"}
+         kxygk/pathmore                           {:local/root "../pathmore"}
+         kxygk/pathomfx                           {:local/root "../pathomfx"}
          ;;
-         kxygk/tock                  {:local/root "../tock"}
-         kxygk/quickthing            {:local/root "../quickthing"}
+         kxygk/tock                               {:local/root "../tock"}
+         kxygk/quickthing                         {:local/root "../quickthing"}
          ;;
-         criterium/criterium         {:mvn/version "0.4.6"}
+         criterium/criterium                      {:mvn/version "0.4.6"}
          com.clojure-goes-fast/clj-async-profiler {:mvn/version "2.0.0-beta1"}
          ;;
-         tick/tick                   {:mvn/version "0.7.5"}
-         techascent/tech.ml.dataset  {:mvn/version "7.023"}
-         dk.ative/docjure            {:mvn/version "1.21.0"}
-         net.clojars.john/injest     {:mvn/version "0.1.0-beta.8"}
-         org.clojure/data.csv        {:mvn/version "0.1.4"}
+         tick/tick                                {:mvn/version "0.7.5"}
+         techascent/tech.ml.dataset               {:mvn/version "7.023"}
+         dk.ative/docjure                         {:mvn/version "1.21.0"}
+         net.clojars.john/injest                  {:mvn/version "0.1.0-beta.8"}
+         org.clojure/data.csv                     {:mvn/version "0.1.4"}
+         com.github.haifengl/smile-core           {:mvn/version "5.2.3"}
          ;; required by `tech.ml.dataset`
          ;; https://techascent.github.io/tech.ml.dataset/tech.v3.libs.fastexcel.html
-         org.dhatim/fastexcel-reader {:mvn/version "0.12.8"
-                                      :exclusions  [org.apache.poi/poi-ooxml]}
+         org.dhatim/fastexcel-reader              {:mvn/version "0.12.8"
+                                                   :exclusions  [org.apache.poi/poi-ooxml]}
          }
  :paths ["."]}

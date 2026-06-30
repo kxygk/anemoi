@@ -46,44 +46,66 @@
 
 (true? nil)
 
+(defn date2cycle-fraction
+  [date]
+  (let [
+        start-of-year   (-> date
+                            tick/first-day-of-year)
+        ended-of-year   (-> date
+                            tick/last-day-of-year)
+        days-in-year    (tick/between start-of-year
+                                      ended-of-year
+                                      :days)
+        day-num-of-date (tick/between start-of-year
+                                      date
+                                      :days)]
+    (/ day-num-of-date
+       days-in-year))) 
+
 (pco/defresolver $filestr->table
-  [{::keys [raingauge-filestr
-            start-date
-            end-date]
-    :or    {start-date nil
-            end-date   nil}}]
-  {::pco/output [::table]}
-  (p/vthread {::table
-              (let [raw-table (-> raingauge-filestr
-                                  (ds/->dataset {:dataset-name "Nakhon GHCNd"
-                                                 :key-fn       normalize-colname})
-                                  ;; GHCNd data in "(tenths of mm)"
-                                  ;; see:
-                                  ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
-                                  (ds/row-map (fn [row-data]
-                                                (assoc row-data
-                                                       :PRCP
-                                                       (if (nil? (:PRCP row-data))
-                                                         nil
-                                                         (* (:PRCP row-data)
-                                                            0.1)))))
-                                  ;; optionally filter on start/end dates
-                                  (ds/filter-column :DATE
-                                                    #(if start-date
-                                                       (tick/> %
-                                                               (tick/date start-date))
-                                                       true))
-                                  (ds/filter-column :DATE
-                                                    #(if end-date
-                                                       (tick/< %
-                                                               (tick/date end-date))
-                                                       true)))]
-                (assoc raw-table
-                       :Day
-                       (range 1
-                              (-> raw-table
-                                  ds/row-count
-                                  inc ))))}))
+[{::keys [raingauge-filestr
+          start-date
+          end-date]
+:or      {start-date nil
+          end-date   nil}}]
+{::pco/output [::table]}
+(p/vthread {::table
+            (let [raw-table (-> raingauge-filestr
+                                (ds/->dataset {:dataset-name "Nakhon GHCNd"
+                                               :key-fn       normalize-colname})
+                                ;; GHCNd data in "(tenths of mm)"
+                                ;; see:
+                                ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
+                                (ds/row-map (fn rain-gauge-reformat
+                                              [row-data]
+                                              (-> row-data
+                                                  (assoc :PRCP
+                                                         (if (nil? (:PRCP row-data))
+                                                           nil
+                                                           (* (:PRCP row-data)
+                                                              0.1)))
+                                                  (assoc :fill
+                                                         (-> row-data
+                                                             :DATE
+                                                             date2cycle-fraction
+                                                             quickthing/color-cycle)))))
+                                ;; optionally filter on start/end dates
+                                (ds/filter-column :DATE
+                                                  #(if start-date
+                                                     (tick/> %
+                                                             (tick/date start-date))
+                                                     true))
+                                (ds/filter-column :DATE
+                                                  #(if end-date
+                                                     (tick/< %
+                                                             (tick/date end-date))
+                                                     true)))]
+  (assoc raw-table
+         :Day
+         (range 1
+                (-> raw-table
+                    ds/row-count
+                    inc ))))}))
 #_
 (-> @(p.a.eql/process env
                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
@@ -109,12 +131,16 @@
     tick/year)
 
 (pco/defresolver $daily-rain
-  [{::keys [table]}]
-  {::pco/output [{::daily-rain [::tmd/x-key
+  [{::keys [table]
+    ::tmd/keys [meta-keys]}]
+  {::pco/input  [::table
+                 (pco/? ::tmd/meta-keys)]
+   ::pco/output [{::daily-rain [::tmd/x-key
                                 ::tmd/y-key
                                 ::tmd/table]}]}
   {::daily-rain {::tmd/x-key :Day
                  ::tmd/y-key :PRCP
+                 ::tmd/meta-keys meta-keys
                  ::tmd/table table}})
 #_
 (-> @(p.a.eql/process env
@@ -181,7 +207,7 @@
                                                 "TH000048552"
                                                 ".csv")
                        ::storm-threshold-mm      100}
-                      [{::annual-storm-count [:y]}]))
+                      [{::annual-storm-count [:xy-all]}]))
 
 (pco/defresolver $annual-storm-fraction
   [{::keys [by-year
@@ -211,7 +237,7 @@
                                 "TH000048552"
                                 ".csv")
                        ::storm-threshold-mm      100}
-                      [{::annual-storm-fraction [:y]}]))
+                      [{::annual-storm-fraction [:xy-all]}]))
 
 (pco/defresolver $annual-storm-rain
   [{::keys [by-year
@@ -246,6 +272,122 @@
                        ::storm-threshold-mm      100}
                       [{::annual-storm-rain [:y]}]))
 
+(defn classify-winter
+  "Winter classified to the closest new-year
+  Other are `nil`
+  OCT NOV DEC of Year 1987
+  is classified as WINTER 1988
+  JAN FEB MAR of Year 1967
+  is claffified as WINTER 1967
+  APR MAY JUN JUL AUG SEP of year 1956
+  are classified as nil"
+  [date]
+  (let [month (tick/month date)
+        year  (tick/int (tick/year date))]
+    (condp =
+        month
+      tick.core/JANUARY   year
+      tick.core/FEBRUARY  year
+      tick.core/MARCH     year
+      tick.core/APRIL     nil
+      tick.core/MAY       nil
+      tick.core/JUNE      nil
+      tick.core/JULY      nil
+      tick.core/AUGUST    nil
+      tick.core/SEPTEMBER nil
+      tick.core/OCTOBER   (inc year)
+      tick.core/NOVEMBER  (inc year)
+      tick.core/DECEMBER  (inc year)
+      (do (println "Date/Month unrecognized!")
+          nil))))
+#_
+(->> @(p.a.eql/process env
+                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                 "TH000048552.csv")}
+                       [::by-year])
+     ::by-year
+     first
+     second
+     :DATE
+     (mapv classify-winter))
+
+(pco/defresolver $by-winter
+  [{::keys [table]}]
+  {::pco/output [::by-winter]}
+  (p/vthread {::by-winter (-> table
+                            (ds/add-or-update-column :WINTER
+                                                     (->> table
+                                                          :DATE
+                                                          (mapv classify-winter)))
+                            (ds/group-by :WINTER))}))
+#_
+(->> @(p.a.eql/process env
+                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                 "TH000048552.csv")}
+                       [::by-winter])
+     ::by-winter
+     keys)
+
+(some? nil)
+
+(pco/defresolver $winter-storm-rain
+  [{::keys [by-winter
+            storm-threshold-mm]}]
+  {::pco/output [{::winter-storm-rain [:xy-all]}]}
+  {::winter-storm-rain {:xy-all (->> (-> by-winter
+                                         (update-vals (fn [year-table]
+                                                        (let [split-table (->> year-table
+                                                                               :PRCP
+                                                                               (filterv some?)
+                                                                               (group-by #(> %
+                                                                                             storm-threshold-mm)))]
+                                                          (let [big-winter-rains (apply +
+                                                                                        (get split-table
+                                                                                             true))
+                                                                #_#_
+                                                                other-rains      (apply +
+                                                                                        (get split-table
+                                                                                             false))]
+                                                            big-winter-rains
+                                                            #_
+                                                            (/ big-winter-rains
+                                                               (+ big-winter-rains
+                                                                  other-rains))))))
+                                         (dissoc nil))
+                                     (mapv identity) ;; make it into [x y] pairs for platting
+                                     sort)}})
+  #_
+  (-> @(p.a.eql/process env
+                        {::raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                  "TH000048552"
+                                                  ".csv")
+                         ::storm-threshold-mm 100}
+                        [{::winter-storm-rain [:xy-all]}]))
+
+(pco/defresolver $winter-storm-count
+  [{::keys [by-winter
+            storm-threshold-mm]}]
+  {::pco/output [{::winter-storm-count [:xy-all]}]}
+  {::winter-storm-count {:xy-all (->> (update-vals by-winter
+                                                   (fn [year-table]
+                                                     (->> year-table
+                                                          :PRCP
+                                                          (filterv some?)
+                                                          (filterv #(> %
+                                                                       storm-threshold-mm))
+                                                          count)))
+                                      (mapv identity)
+                                      sort)}})
+#_
+(-> @(p.a.eql/process env
+                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                "TH000048552"
+                                                ".csv")
+                       ::storm-threshold-mm      100}
+                      [{::annual-storm-count [:y]}]))
+
+
+
 (def env
   (pci/register {::p.a.eql/parallel? true}
                 [$filestr->table
@@ -254,4 +396,7 @@
                  $annual-rain
                  $annual-storm-count
                  $annual-storm-fraction
-                 $annual-storm-rain]))
+                 $annual-storm-rain
+                 $by-winter
+                 $winter-storm-rain
+                 $winter-storm-count]))

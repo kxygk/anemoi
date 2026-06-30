@@ -23,6 +23,7 @@
             [tech.v3.dataset.join         :as tjoin]
             ))
 
+  
 (pbir/constantly-resolver :math/PI
                           3.1415)
 
@@ -66,6 +67,15 @@
     ::enso-table
     ds/column-names)
 ;; (:RefDate :EnsoIndex :Year :Month)
+
+#_
+(->> @(p.a.eql/process env
+                      @kxygk.anemoi.central/*state
+                      [::enso-table])
+    ::enso-table
+    (into {})
+    keys)
+
 
 (pco/defresolver $isotopes-filestr->raw
   [{::keys [isotopes-filestr]}]
@@ -325,7 +335,6 @@
 (-> @(p.a.eql/process env
                       @central/*state
                       [::full-table]))
-
 (pco/defresolver $missing-days-datavec
   "The days in the full table are numbered.
 Get the number of the last day"

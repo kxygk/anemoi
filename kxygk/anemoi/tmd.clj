@@ -57,10 +57,9 @@
                   ::col-filter-fn]
    :pco/priority 1
    ::pco/output  [::table]}
-  (p/vthread (do (println "filtering column!")
-                 {::table (ds/filter table-to-filter
+  (p/vthread     {::table (ds/filter table-to-filter
                                      (fn [row-datapoint-map]
-                                       (col-filter-fn row-datapoint-map)))})))
+                                       (col-filter-fn row-datapoint-map)))}))
 
 (pco/defresolver $vectorizer
   [{:keys [x
