@@ -1,5 +1,9 @@
 (ns kxygk.anemoi.central
   (:require [kxygk.anemoi.airport :as airport]
+            [kxygk.anemoi.enso :as enso]
+            [kxygk.anemoi.index :as index]
+            [kxygk.anemoi.isogsm :as isogsm]
+            [kxygk.anemoi.generic :as generic]
             [kxygk.anemoi.ghcnd :as ghcnd]
             [kxygk.anemoi.nakhon :as nakhon]
             [kxygk.anemoi.plot :as plot]
@@ -22,32 +26,36 @@
 
 
 (def *state
-  (atom {::airport/enso-filestr          (str "/home/kxygk/Data/enso/"
-                                      "nina34.anom.csv")
+  (atom {::plot/width                    1800
+         ::plot/height                   1300
+         ::plot/scale                    100
+         ::plot/margin-frac              0.1
+         ::airport/enso-filestr          (str "/home/kxygk/Data/enso/"
+                                              "nina34.anom.csv")
          ::airport/isotopes-filestr      (str "/home/kxygk/Data/airport/"
-                                      "first-sheet-extracted.csv")
+                                              "first-sheet-extracted.csv")
          ::airport/climate-index-filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                      "climate-index.csv")
+                                              "climate-index.csv")
          ::airport/nakhon-filestr        (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                      ;;#_
-                                      "TH000048552"
-                                      ;; NAKHON - Winter storm target location
-                                      #_
-                                      "TH000048564"
-                                      ;;PHUKET - Exposed West Coast            ***
-                                      #_
-                                      "TH000048565"
-                                      ;;PHUKET AIRPORT - Shielded West Coast
-                                      #_
-                                      "TH000048551"
-                                      ;;SURAT THANI - Midpoint (middle of map) ***
-                                      #_
-                                      "TH000048567"
-                                      ;;TRANG - West Side of the Nakhon Range  ***
-                                      #_
-                                      "TH000048568"
-                                      ;;SONGKHLA - Southern East Coast
-                                      ".csv")
+                                              ;;#_
+                                              "TH000048552"
+                                              ;; NAKHON - Winter storm target location
+                                              #_
+                                              "TH000048564"
+                                              ;;PHUKET - Exposed West Coast            ***
+                                              #_
+                                              "TH000048565"
+                                              ;;PHUKET AIRPORT - Shielded West Coast
+                                              #_
+                                              "TH000048551"
+                                              ;;SURAT THANI - Midpoint (middle of map) ***
+                                              #_
+                                              "TH000048567"
+                                              ;;TRANG - West Side of the Nakhon Range  ***
+                                              #_
+                                              "TH000048568"
+                                              ;;SONGKHLA - Southern East Coast
+                                              ".csv")
          ;; *** -> start on Jan 1st 1951
          ;;
          ;; From: https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt
@@ -58,23 +66,154 @@
          ;; TH000048567   7.5170   99.6170   16.0    TRANG
          ;; TH000048568   7.2000  100.6170    9.0    SONGKHLA
          ;; TH000048569   6.9170  100.4330   35.0    HAT YAI
-         ::klang-filestr         (str "/home/kxygk/Data/Tan2019/"
-                                      "modern-part.csv")
-         ::crazy-dates           #{#time/date "2017-07-30"}
-         ::start-date            #inst"2011-01-01"
-         ::end-date              #inst"2021-01-01"
-         ::cycle-start-value     2011
-         ::cycle-length          365
-         ::cycle-phase           0
-         ::big-storm-mm          80.0
-         :above-index-threshold  99.9    ;; default to no threshold
-         :below-index-threshold  99.9}))
+         ::klang-filestr                 (str "/home/kxygk/Data/Tan2019/"
+                                              "modern-part.csv")
+         ;; New format
+         ::enso-filestr                  (str "/home/kxygk/Data/enso/"
+                                              "nina34.anom.csv")
+         ::airport/filestr               (str "/home/kxygk/Data/airport/"
+                                              "first-sheet-extracted.csv")
+         ::index/filestr                 (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                                              "climate-index.csv")
+         ::isogsm/dirstr                 (str "/home/kxygk/Data/IsoGSM/"
+                                              "csv/"
+                                              #_"csv-nakhon/")
+         ::airport/crazy-dates           #{#time/date "2017-07-30"}
+         :start-date                     #time/date"2011-01-01"
+         :end-date                       #time/date"2031-01-01" ;; Set to 2031 for now
+         ::plot/cycle-start-value        2011
+         ::plot/cycle-length             365
+         ::plot/cycle-phase              0
+         ::big-storm-mm                  80.0
+         :above-index-threshold          99.9    ;; default to no threshold
+         :below-index-threshold          99.9}))
 
 #_
 (-> @(p.a.eql/process env
                       @*state
-                      [::plot/rain-data]))
+                      [::airport/filestr]))
 
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [:start-date]))
+
+(pco/defresolver $repacked
+  [{::plot/keys    [width
+                    height
+                    scale
+                    margin-frac
+                    cycle-start-value
+                    cycle-length
+                    cycle-phase]
+    ::airport/keys [filestr
+                    crazy-dates]
+    ::index/keys   [filestr]
+    ::isogsm/keys  [dirstr]
+    :keys          [start-date
+                    end-date]
+    :as            inputs}]
+  {::figures (merge {} #_inputs
+                    {::modern (merge inputs
+                                     #_
+                                     {::airport/data {:start-date start-date}})}
+                    #_#_
+                    {::plot/airport-classified inputs}
+                    {::plot/index-data inputs})})
+
+(def plan-cache*
+  (atom {}))
+
+(def env
+  (-> (pci/register {::p.a.eql/parallel? true}
+                    [$repacked
+                     airport/env
+                     enso/env
+                     index/env
+                     isogsm/env
+                     ghcnd/env
+                     stat/env
+                     tmd/env
+                     plot/env
+                     generic/env])
+      (pcp/with-plan-cache plan-cache*)
+      kxygk.pathmore.cache/inject-for-all-resolvers))
+
+;;#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [::isogsm/table]}]}]))
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::isogsm/data [:Date]}]}]}]))
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::isogsm/data [:Days-from-start]}]}]}]))
+
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::plot/day-isogsm-rain-d18O [:y]}]}]}]))
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::plot/day-isogsm-rain-d18O [:xy-nonil]}]}]}]))
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::plot/day-isogsm-vapor-d18O [:xy-nonil]}]}]}]))
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [::plot/isogsm-vapor-d18O-layer]}]}]))
+
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [::plot/day-num-max]}]}]))
+
+
+;;#_
+(defn gen-plots []
+  (let [figs (->> [{::figures [{::modern [{::plot/meteoric-water-line-subplot [::plot/svg]}
+                                          {::plot/amount-effect-subplot [::plot/svg]}
+                                          {::plot/rain-subplot [::plot/svg]}
+                                          {::plot/rain-d18O-subplot [::plot/svg]}
+                                          {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                          {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                          {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                          {::plot/index-subplot [::plot/svg]}
+                                          {::plot/index-d18O-subplot [::plot/svg]}
+                                          {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                          {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                          {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                          #_
+                                          {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}]}]}]
+                  (p.a.eql/process env
+                                   (merge @*state
+                                          {::big-storm-mm 0.0}))
+                  deref
+                  ::figures
+                  ::modern)]
+    (->> figs
+         (mapv (fn [[key
+                     value]]
+                 (->> value
+                      ::plot/svg
+                      (spit (str "./out/all-"
+                                 (name key)
+                                 ".svg"))))))))
+
+(time (gen-plots))
+
+#_
 (pco/defresolver $single-figures
   [inputs]
   {::pco/input  [::start-date
@@ -189,13 +328,13 @@
                        ::plot/nakhon-gauge        {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
                                                                                    "TH000048552"
                                                                                    ".csv")
-                                                   ::tmd/meta-keys [:fill] ;; Should add a date!
-                                                   ::ghcnd/storm-threshold-mm  (-> inputs
+                                                   ::tmd/meta-keys            [:fill] ;; Should add a date!
+                                                   ::ghcnd/storm-threshold-mm (-> inputs
                                                                                   ::big-storm-mm)}
                        ::plot/nakhon-gauge-modern {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
                                                                                    "TH000048552"
                                                                                    ".csv")
-                                                   ::ghcnd/storm-threshold-mm  (-> inputs
+                                                   ::ghcnd/storm-threshold-mm (-> inputs
                                                                                   ::big-storm-mm)
                                                    ::ghcnd/start-date         (-> inputs
                                                                                   ::start-date)
@@ -204,7 +343,7 @@
                        ::plot/phuket-gauge        {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
                                                                                    "TH000048565"
                                                                                    ".csv")
-                                                   ::ghcnd/storm-threshold-mm  (-> inputs
+                                                   ::ghcnd/storm-threshold-mm (-> inputs
                                                                                   ::big-storm-mm)}
                        ::plot/phuket-gauge-modern {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
                                                                                    "TH000048565"
@@ -332,7 +471,7 @@
 #_
 (prof/profile (dotimes [_ 20] (process-my-plots)))
 
-      
+
 #_
 (spit "meta.edn"
       (-> (process-my-plots)
@@ -366,41 +505,41 @@
     x))
 #_
 (->> (process-my-plots)
-          deref
-          meta
-          ::pcr/run-stats
-          psm/smart-run-stats
-          strip-pathom-noise
-          clojure.pprint/pprint
-          with-out-str
-          (spit "stat.edn")
-          #_
-          ::pcr/process-run-duration-ms)
+     deref
+     meta
+     ::pcr/run-stats
+     psm/smart-run-stats
+     strip-pathom-noise
+     clojure.pprint/pprint
+     with-out-str
+     (spit "stat.edn")
+     #_
+     ::pcr/process-run-duration-ms)
 
 #_
 (prof/profile  
-      (dotimes [_ 20]
-        (gen-plots)))
+    (dotimes [_ 20]
+      (gen-plots)))
 
 #_
 (prof/profile  {:event :wall}
-      (dotimes [_ 20]
-        (gen-plots)))
+  (dotimes [_ 20]
+    (gen-plots)))
 #_
 (let [pid (.pid (java.lang.ProcessHandle/current))]
-      (clojure.java.shell/sh "jcmd"
-                             (str pid)
-                             "JFR.start"
-                             "name=test"
-                             "settings=profile"
-                             "filename=./from-repl.jfr")
-       (Thread/sleep 200)
-      (gen-plots)q
-       (Thread/sleep 800)
-      (clojure.java.shell/sh "jcmd"
-                             (str pid)
-                             "JFR.stop"
-                             "name=test"))
+  (clojure.java.shell/sh "jcmd"
+                         (str pid)
+                         "JFR.start"
+                         "name=test"
+                         "settings=profile"
+                         "filename=./from-repl.jfr")
+  (Thread/sleep 200)
+  (gen-plots)q
+  (Thread/sleep 800)
+  (clojure.java.shell/sh "jcmd"
+                         (str pid)
+                         "JFR.stop"
+                         "name=test"))
 #_
 (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
                                     {::plot/index-subplot [::plot/svg]}
@@ -442,19 +581,19 @@
                       @*state)
      deref)
 
-
+#_
 (pco/defresolver $simple-figures
   [inputs]
   {::pco/input  [::airport/full-table]
    ::pco/outout [::simple-figures]}
-  {::simple-figures {::plot/width              1800
-                     ::plot/height             1300 #_2900 ;;650
-                     ::plot/scale              100
-                     ::plot/margin-frac        0.1
-                     ::plot/table (::airport/full-table inputs)
-                     ::plot/rain-totals (::nakhon/nakhon-annual-rain-totals inputs)
+  {::simple-figures {::plot/width           1800
+                     ::plot/height          1300 #_2900 ;;650
+                     ::plot/scale           100
+                     ::plot/margin-frac     0.1
+                     ::plot/table           (::airport/full-table inputs)
+                     ::plot/rain-totals     (::nakhon/nakhon-annual-rain-totals inputs)
                      ::plot/big-rain-totals (::nakhon/nakhon-annual-rain-totals inputs)
-                     ::plot/big-storm-mm 80.0}})
+                     ::plot/big-storm-mm    80.0}})
 (identity @*state)
 
 #_
@@ -517,7 +656,7 @@
      ::simple-figures
      ::plot/monthly-averages-subplot
      ::plot/svg
-      (spit "./out/monthly-averages.svg"))
+     (spit "./out/monthly-averages.svg"))
 #_
 (->> [{::simple-figures [{::plot/amount-effect-subplot [::plot/svg]}]}]
      (p.a.eql/process env
@@ -526,10 +665,10 @@
      ::simple-figures
      ::plot/amount-effect-subplot
      ::plot/svg
-      (spit "./out/amount-effect.svg"))
+     (spit "./out/amount-effect.svg"))
 
 
-     #_{#time/month "MAY" -4.39515931116292, #time/month "DECEMBER" -4.87025263610812, #time/month "NOVEMBER" -5.892095496817324, #time/month "JUNE" -4.061993906191126, #time/month "OCTOBER" -5.551088488343817, #time/month "AUGUST" -4.740541788139581, #time/month "FEBRUARY" -3.773729056965054, #time/month "APRIL" -5.222508679794652, #time/month "JANUARY" -8.81139040857962, #time/month "SEPTEMBER" -5.313021538364952, #time/month "JULY" -3.983077143718893, #time/month "MARCH" -7.510604884306495}
+#_{#time/month "MAY" -4.39515931116292, #time/month "DECEMBER" -4.87025263610812, #time/month "NOVEMBER" -5.892095496817324, #time/month "JUNE" -4.061993906191126, #time/month "OCTOBER" -5.551088488343817, #time/month "AUGUST" -4.740541788139581, #time/month "FEBRUARY" -3.773729056965054, #time/month "APRIL" -5.222508679794652, #time/month "JANUARY" -8.81139040857962, #time/month "SEPTEMBER" -5.313021538364952, #time/month "JULY" -3.983077143718893, #time/month "MARCH" -7.510604884306495}
 
 #_
 (->> [{::rain-monsoon-figure [{::plot/rain-subplot [::plot/svg]}]}]
@@ -556,34 +695,34 @@
                  ::cycle-length
                  ::cycle-phase]
    ::pco/output [::rain-monsoon-figure]}
-  {::rain-monsoon-figure {::plot/width        1800
-                          ::plot/height       650
-                          ::plot/scale        75
-                          ::plot/margin-frac  0.1
+  {::rain-monsoon-figure {::plot/width             1800
+                          ::plot/height            650
+                          ::plot/scale             75
+                          ::plot/margin-frac       0.1
                           ;;
-                          ::plot/d18O-rain {::tmd/x-key :d18O
-                                            ::tmd/y-key :Rain-mm
-                                            ::tmd/table (::airport/full-table inputs)}
-                          ::plot/rain-data (::days-vs-rain inputs)
-                          ::plot/d18O-data (::days-vs-d18O inputs)
-                          ::plot/d18O-above-data {::tmd/x-key :Day
-                                                  ::tmd/y-key :d18O
-                                                  ::tmd/table (::airport/above-table inputs)}
-                          ::plot/d18O-below-data {::tmd/x-key :Day
-                                                  ::tmd/y-key :d18O
-                                                  ::tmd/table (::airport/below-table inputs)}
-                          ::plot/d18O-rain-above {::tmd/x-key :d18O
-                                                  ::tmd/y-key :Rain-mm
-                                                  ::tmd/table (::airport/above-table inputs)}
-                          ::plot/d18O-rain-below {::tmd/x-key :d18O
-                                                  ::tmd/y-key :Rain-mm
-                                                  ::tmd/table (::airport/below-table inputs)}
-                          ::plot/above?-data (::days-vs-above? inputs)
-                          ::plot/index-above (::days-vs-index-above inputs)
-                          ::plot/index-below (::days-vs-index-below inputs)
+                          ::plot/d18O-rain         {::tmd/x-key :d18O
+                                                    ::tmd/y-key :Rain-mm
+                                                    ::tmd/table (::airport/full-table inputs)}
+                          ::plot/rain-data         (::days-vs-rain inputs)
+                          ::plot/d18O-data         (::days-vs-d18O inputs)
+                          ::plot/d18O-above-data   {::tmd/x-key :Day
+                                                    ::tmd/y-key :d18O
+                                                    ::tmd/table (::airport/above-table inputs)}
+                          ::plot/d18O-below-data   {::tmd/x-key :Day
+                                                    ::tmd/y-key :d18O
+                                                    ::tmd/table (::airport/below-table inputs)}
+                          ::plot/d18O-rain-above   {::tmd/x-key :d18O
+                                                    ::tmd/y-key :Rain-mm
+                                                    ::tmd/table (::airport/above-table inputs)}
+                          ::plot/d18O-rain-below   {::tmd/x-key :d18O
+                                                    ::tmd/y-key :Rain-mm
+                                                    ::tmd/table (::airport/below-table inputs)}
+                          ::plot/above?-data       (::days-vs-above? inputs)
+                          ::plot/index-above       (::days-vs-index-above inputs)
+                          ::plot/index-below       (::days-vs-index-below inputs)
                           ::plot/cycle-start-value (::cycle-start-value inputs)
-                          ::plot/cycle-length (::cycle-length inputs)
-                          ::plot/cycle-phase  (::cycle-phase inputs)}})
+                          ::plot/cycle-length      (::cycle-length inputs)
+                          ::plot/cycle-phase       (::cycle-phase inputs)}})
 #_
 (let [figs (->> [{::rain-monsoon-figure [{::plot/rain-d18O-index-2stack [::plot/svg]}
                                          {::plot/rain-d18O-classified-index-2stack [::plot/svg]}]}]
@@ -633,26 +772,26 @@
                       [{::days-vs-rain-figure [{::plot/index-above [:xy-nonil]}]}]))
 #_
 (->> @(p.a.eql/process env
-                      (assoc @*state
-                             ::plot/width
-                             1000)
-                      [{::days-vs-rain-figure [{::plot/rain-subplot [::plot/svg]}]}])
+                       (assoc @*state
+                              ::plot/width
+                              1000)
+                       [{::days-vs-rain-figure [{::plot/rain-subplot [::plot/svg]}]}])
      ::days-vs-rain-figure
      ::plot/rain-subplot
      ::plot/svg
      (spit "test-rain.svg"))
 #_
 (->> @(p.a.eql/process env
-                      (assoc @*state
-                             ::plot/width
-                             1000)
-                      [{::days-vs-rain-figure [{::plot/index-subplot [::plot/svg]}]}])
+                       (assoc @*state
+                              ::plot/width
+                              1000)
+                       [{::days-vs-rain-figure [{::plot/index-subplot [::plot/svg]}]}])
      ::days-vs-rain-figure
      ::plot/index-subplot
      ::plot/svg
      (spit "test-index.svg"))
 
-
+#_#_
 
 (def plan-cache*
   (atom {}))
@@ -660,38 +799,53 @@
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
                     [airport/env
+                     enso/env
+                     index/env
                      ghcnd/env
                      stat/env
                      tmd/env
-                     (pbir/equivalence-resolver ::airport/enso-filestr
-                                                ::enso-filestr)
-                     (pbir/equivalence-resolver ::airport/isotopes-filestr
-                                                ::isotopes-filestr)
-                     (pbir/equivalence-resolver ::airport/climate-index-filestr
-                                                ::climate-index-filestr)
-                     (pbir/equivalence-resolver ::airport/crazy-dates
-                                                ::crazy-dates)
-                     (pbir/equivalence-resolver ::airport/start-date
-                                                ::start-date)
-                     (pbir/equivalence-resolver ::airport/end-date
-                                                ::end-date)
-                     (pbir/equivalence-resolver ::airport/klang-filestr
-                                                ::klang-filestr)
-                     (pbir/equivalence-resolver ::airport/big-storm-mm
-                                                ::big-storm-mm)
+                     tock/env
                      plot/env
+                     generic/env
                      $single-figures
                      $simple-figures])
       (pcp/with-plan-cache plan-cache*)
       kxygk.pathmore.cache/inject-for-all-resolvers))
 
 
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [:Months]))
+#_
+(-> @(p.a.eql/process env
+                      {::airport/filestr     (str "/home/kxygk/Data/airport/"
+                                                  "first-sheet-extracted.csv")
+                       ::enso/filestr        (str "/home/kxygk/Data/enso/"
+                                                  "nina34.anom.csv")
+                       ::index/filestr       (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                                                  "climate-index.csv")
+                       ::index/start-date    #inst"2011-01-01"
+                       ::index/end-date      #inst"2021-01-01"
+                       ::airport/crazy-dates #{#time/date "2017-07-30"}}
+                      [::airport/full-table]))
+
+
+
+
+
+
+
+
+
+
+
 ;; PRINT TABLES TO FILES
 #_
 (let [{::airport/keys [full-table]} (->> [::airport/full-table]
-                                          (p.a.eql/process env
-                                                           @*state)
-                                          deref) ]
+                                         (p.a.eql/process env
+                                                          @*state)
+                                         deref) ]
   (tech.v3.dataset/write! full-table
                           "full-table.txt"))
 
@@ -700,9 +854,9 @@
 ;; (I don't see any trend or reason)
 #_
 (let [{::airport/keys [full-table]} (->> [::airport/full-table]
-                                          (p.a.eql/process env
-                                                           @*state)
-                                          deref) ]
+                                         (p.a.eql/process env
+                                                          @*state)
+                                         deref) ]
   (-> full-table
       (tech.v3.dataset/sort-by-column :GMWL-d18O)
       (tech.v3.dataset/filter-column :Above?)))
@@ -751,35 +905,35 @@
 #_
 (prof/profile ;; {:event :wall} ;; this flag makes the flamegraph capture wall time and shows waiting for threads
     (dotimes [_ 200]
-    (with-out-str (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
-                                                      {::plot/index-subplot [::plot/svg]}
-                                                      {::plot/rain-d18O-subplot [::plot/svg]}
-                                                      {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                                      {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                                      {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                                      {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
-                                                      {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
-                                                      {::plot/index-d18O-subplot [::plot/svg]}
-                                                      {::plot/index-d18O-big-events-subplot [::plot/svg]}
-                                                      {::plot/hist-count-all-subplot [::plot/svg]}
-                                                      {::plot/hist-count-classified-subplot [::plot/svg]}
-                                                      {::plot/hist-count-subplot [::plot/svg]}
-                                                      {::plot/hist-rain-all-subplot [::plot/svg]}
-                                                      {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                                      {::plot/hist-rain-subplot [::plot/svg]}
-                                                      {::plot/hist-monsoon-classified-subplot [::plot/svg]}
-                                                      {::plot/klang-vs-nakhon-subplot [::plot/svg] }      ;; $
-                                                      {::plot/klang-vs-nakhon-bigrainfraction-subplot [::plot/svg] }
-                                                      {::plot/klang-vs-phuket-nakhon-subplot [::plot/svg] }]}]
-                                  (p.a.eql/process env
-                                                 @*state)
-                                  ;;deref
-                                  ::single-figures)]
-                    (->> figs
-                         (mapv (fn [[key
-                                     value]]
-                                 (->> value
-                                      ::plot/svg))))))))
+      (with-out-str (let [figs (->> [{::single-figures [{::plot/rain-subplot [::plot/svg]}
+                                                        {::plot/index-subplot [::plot/svg]}
+                                                        {::plot/rain-d18O-subplot [::plot/svg]}
+                                                        {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                                        {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                                        {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                                        {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                                        {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
+                                                        {::plot/index-d18O-subplot [::plot/svg]}
+                                                        {::plot/index-d18O-big-events-subplot [::plot/svg]}
+                                                        {::plot/hist-count-all-subplot [::plot/svg]}
+                                                        {::plot/hist-count-classified-subplot [::plot/svg]}
+                                                        {::plot/hist-count-subplot [::plot/svg]}
+                                                        {::plot/hist-rain-all-subplot [::plot/svg]}
+                                                        {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                                        {::plot/hist-rain-subplot [::plot/svg]}
+                                                        {::plot/hist-monsoon-classified-subplot [::plot/svg]}
+                                                        {::plot/klang-vs-nakhon-subplot [::plot/svg] }      ;; $
+                                                        {::plot/klang-vs-nakhon-bigrainfraction-subplot [::plot/svg] }
+                                                        {::plot/klang-vs-phuket-nakhon-subplot [::plot/svg] }]}]
+                                    (p.a.eql/process env
+                                                     @*state)
+                                    ;;deref
+                                    ::single-figures)]
+                      (->> figs
+                           (mapv (fn [[key
+                                       value]]
+                                   (->> value
+                                        ::plot/svg))))))))
 
 ;; WITH THREAD
 ;; Evaluation count : 120 in 60 samples of 2 calls.

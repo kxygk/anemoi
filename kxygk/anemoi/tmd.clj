@@ -66,9 +66,13 @@
            meta]}]
   {::pco/input  [{:x [:data-vec]}
                  {:y [:data-vec]}
-                 :meta] ;; why is it not a `data-vec`?
+                 (pco/? :meta)] ;; why is it not a `data-vec`?
    ::pco/output [:xy-all]}
-  {:xy-all (if meta
+  {:xy-all (do (println (str "Last x"
+                             (-> x
+                                 :data-vec
+                                 last)))
+               (if meta
              (mapv vector
                    (-> x
                        :data-vec)
@@ -79,7 +83,7 @@
                    (-> x
                        :data-vec)
                    (-> y
-                       :data-vec)))})
+                       :data-vec))))})
 
 (pco/defresolver $devectorizer
   [{:keys [xy-all]}]
@@ -92,8 +96,8 @@
          metas] (apply mapv
                        vector
                        xy-all)]
-    {:x {:datavec xs}
-     :y {:datavec ys}
+    {:x {:data-vec xs}
+     :y {:data-vec ys}
      :meta metas}))
     
 
@@ -120,13 +124,16 @@
   [{:keys [xy-all]}]
   {::pco/input  [:xy-all]
    ::pco/output [:xy-nonil]}
-  {:xy-nonil (filterv (fn [[x-coord
+  {:xy-nonil (do (println (str "Last x-y:"
+                               (-> xy-all
+                                   last)))
+                 (filterv (fn [[x-coord
                             y-coord
                             ;; meta?
                             ]]
                         (and x-coord
                              y-coord))
-                      xy-all)})
+                      xy-all))})
 
 (def env
   (pci/register [$column-extractor
@@ -135,4 +142,7 @@
                  $devectorizer
                  $no-nil-filter]))
 
-
+(get 
+{true 5
+ false 5}
+true)
