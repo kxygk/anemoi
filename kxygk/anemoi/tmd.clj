@@ -2,7 +2,6 @@
   "Stuff that's still too small to put in a separate lib"
   (:require [kxygk.anemoi.stat :as stat]
             ;;[kxygk.dripsplit.central :as central]
-            kxygk.pathomfx.core
             [clojure.math]
             [clojure.string]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]

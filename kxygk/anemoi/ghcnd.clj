@@ -10,7 +10,6 @@
   (:require [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd  :as tmd]
             ;;[kxygk.dripsplit.central :as central]
-            kxygk.pathomfx.core
             [clojure.math]
             [clojure.string]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
