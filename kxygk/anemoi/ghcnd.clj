@@ -63,43 +63,43 @@
     :or    {start-date nil
             end-date   nil}}]
   {::pco/output [::table]}
-  (p/vthread {::table
-              (let [raw-table (-> raingauge-filestr
-                                  (ds/->dataset {:dataset-name "Nakhon GHCNd"
-                                                 :key-fn       util/normalize-colname})
-                                  ;; GHCNd data in "(tenths of mm)"
-                                  ;; see:
-                                  ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
-                                  (ds/row-map (fn rain-gauge-reformat
-                                                [row-data]
+  {::table
+   (let [raw-table (-> raingauge-filestr
+                       (ds/->dataset {:dataset-name "Nakhon GHCNd"
+                                      :key-fn       util/normalize-colname})
+                       ;; GHCNd data in "(tenths of mm)"
+                       ;; see:
+                       ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
+                       (ds/row-map (fn rain-gauge-reformat
+                                     [row-data]
+                                     (-> row-data
+                                         (assoc :PRCP
+                                                (if (nil? (:PRCP row-data))
+                                                  nil
+                                                  (* (:PRCP row-data)
+                                                     0.1)))
+                                         (assoc :fill
                                                 (-> row-data
-                                                    (assoc :PRCP
-                                                           (if (nil? (:PRCP row-data))
-                                                             nil
-                                                             (* (:PRCP row-data)
-                                                                0.1)))
-                                                    (assoc :fill
-                                                           (-> row-data
-                                                               :DATE
-                                                               date2cycle-fraction
-                                                               quickthing/color-cycle)))))
-                                  ;; optionally filter on start/end dates
-                                  (ds/filter-column :DATE
-                                                    #(if start-date
-                                                       (tick/> %
-                                                               (tick/date start-date))
-                                                       true))
-                                  (ds/filter-column :DATE
-                                                    #(if end-date
-                                                       (tick/< %
-                                                               (tick/date end-date))
-                                                       true)))]
-                (assoc raw-table
-                       :Day
-                       (range 1
-                              (-> raw-table
-                                  ds/row-count
-                                  inc ))))}))
+                                                    :DATE
+                                                    date2cycle-fraction
+                                                    quickthing/color-cycle)))))
+                       ;; optionally filter on start/end dates
+                       (ds/filter-column :DATE
+                                         #(if start-date
+                                            (tick/> %
+                                                    (tick/date start-date))
+                                            true))
+                       (ds/filter-column :DATE
+                                         #(if end-date
+                                            (tick/< %
+                                                    (tick/date end-date))
+                                            true)))]
+     (assoc raw-table
+            :Day
+            (range 1
+                   (-> raw-table
+                       ds/row-count
+                       inc ))))})
 #_
 (pathmore/check ::table)
 
@@ -121,16 +121,16 @@
 (pco/defresolver $by-year
   [{::keys [table]}]
   {::pco/output [::by-year]}
-  (p/vthread {::by-year (-> table
-                            (ds/add-or-update-column :YEAR
-                                                     (->> table
-                                                          :DATE
-                                                          (mapv tick/year)))
-                            (ds/group-by :YEAR)
-                            set
-                            (update-keys #(-> %
-                                              str
-                                              Integer/parseInt)))}))
+  {::by-year (-> table
+                 (ds/add-or-update-column :YEAR
+                                          (->> table
+                                               :DATE
+                                               (mapv tick/year)))
+                 (ds/group-by :YEAR)
+                 set
+                 (update-keys #(-> %
+                                   str
+                                   Integer/parseInt)))})
 #_
 (pathmore/check ::by-year)
 
@@ -259,12 +259,12 @@
 (pco/defresolver $by-winter
   [{::keys [table]}]
   {::pco/output [::by-winter]}
-  (p/vthread {::by-winter (-> table
-                              (ds/add-or-update-column :WINTER
-                                                       (->> table
-                                                            :DATE
-                                                            (mapv classify-winter)))
-                              (ds/group-by :WINTER))}))
+  {::by-winter (-> table
+                   (ds/add-or-update-column :WINTER
+                                            (->> table
+                                                 :DATE
+                                                 (mapv classify-winter)))
+                   (ds/group-by :WINTER))})
 #_
 (pathmore/check ::by-winter)
 

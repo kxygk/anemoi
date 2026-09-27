@@ -38,8 +38,8 @@
 (pco/defresolver $hiccup2svg
   [{::keys [hiccup]}]
   {::pco/output [::svg]}
-  (p/vthread  {::svg (-> hiccup
-                         quickthing/svg2xml)}))
+  {::svg (-> hiccup
+             quickthing/svg2xml)})
 
 ;; Data Vectorization
 ;;
@@ -774,13 +774,13 @@
             d18O-above-average-layer
             d18O-below-average-layer]}]
   {::pco/output [{::rain-d18O-classified-average-subplot [::hiccup]}]}
-  (p/vthread  {::rain-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
-                                                                               (::hiccup rain-d18O-classified-subplot)
-                                                                               d18O-above-average-layer
-                                                                               d18O-below-average-layer)
-                                                                    (quickthing/svg-wrap [width
-                                                                                          height]
-                                                                                         width))}}))
+  {::rain-d18O-classified-average-subplot {::hiccup (-> (svg/group {}
+                                                                   (::hiccup rain-d18O-classified-subplot)
+                                                                   d18O-above-average-layer
+                                                                   d18O-below-average-layer)
+                                                        (quickthing/svg-wrap [width
+                                                                              height]
+                                                                             width))}})
 
 
 
@@ -803,36 +803,36 @@
                  {::day-below [#_{:x [::stat/max]} ;; should be the same
                                {:y [::stat/max]}]}]
    ::pco/output [::index-axis]}
-  (p/vthread  {::index-axis (-> (quickthing/primary-axis [[0
-                                                           0.0] ;; index min is always zero
-                                                          [day-num-max
-                                                           (max (-> day-above
-                                                                    :y
-                                                                    ::stat/max)
-                                                                (-> day-below
-                                                                    :y
-                                                                    ::stat/max))]]
-                                                         {:width       width
-                                                          :height      height
-                                                          :title       "Monsoon"
-                                                          :legend      [["SUMMER MONSOON"
-                                                                         {:fill   summer-color
-                                                                          :stroke nil}]
-                                                                        ["WINTER MONSOON"
-                                                                         {:fill   winter-color
-                                                                          :stroke nil}]]
-                                                          :y-name      "Index (unitless)"
-                                                          :scale       scale
-                                                          :margin-frac margin-frac
-                                                          :color       "#0008"})
-                                (assoc :grid
-                                       nil)
-                                (assoc-in [:x-axis
-                                           :visible]
-                                          false)
-                                (assoc-in [:y-axis
-                                           :visible]
-                                          false))}))
+  {::index-axis (-> (quickthing/primary-axis [[0
+                                               0.0] ;; index min is always zero
+                                              [day-num-max
+                                               (max (-> day-above
+                                                        :y
+                                                        ::stat/max)
+                                                    (-> day-below
+                                                        :y
+                                                        ::stat/max))]]
+                                             {:width       width
+                                              :height      height
+                                              :title       "Monsoon"
+                                              :legend      [["SUMMER MONSOON"
+                                                             {:fill   summer-color
+                                                              :stroke nil}]
+                                                            ["WINTER MONSOON"
+                                                             {:fill   winter-color
+                                                              :stroke nil}]]
+                                              :y-name      "Index (unitless)"
+                                              :scale       scale
+                                              :margin-frac margin-frac
+                                              :color       "#0008"})
+                    (assoc :grid
+                           nil)
+                    (assoc-in [:x-axis
+                               :visible]
+                              false)
+                    (assoc-in [:y-axis
+                               :visible]
+                              false))})
 
 
 
@@ -1013,12 +1013,12 @@
   {::pco/input  [::hist-rain-all-subplot
                  ::hist-rain-classified-subplot]
    ::pco/output [::hist-rain-subplot]}
-  (p/vthread  {::hist-rain-subplot {::hiccup (-> (svg/group {}
-                                                            (::hiccup hist-rain-all-subplot)
-                                                            (::hiccup hist-rain-classified-subplot))
-                                                 (quickthing/svg-wrap [width
-                                                                       height]
-                                                                      width))}}))
+  {::hist-rain-subplot {::hiccup (-> (svg/group {}
+                                                (::hiccup hist-rain-all-subplot)
+                                                (::hiccup hist-rain-classified-subplot))
+                                     (quickthing/svg-wrap [width
+                                                           height]
+                                                          width))}})
 
 (pco/defresolver $isogsm-repack
   [{::isogsm/keys [data]}]
@@ -1254,140 +1254,140 @@
                  {::d18O-extremes-data [:xy-nonil]}
                  {::d18O-other-data [:xy-nonil]}] ;;
    ::pco/output [::d18O-below-select-layer]}
-  (p/vthread  {::d18O-below-select-layer (let [last-day                 (apply max ;; find last day
-                                                                               (into (mapv first
-                                                                                           (:xy-nonil d18O-extremes-data))
-                                                                                     (mapv first
-                                                                                           (:xy-nonil d18O-other-data))))
-                                               max-val                  (apply max
-                                                                               (into (mapv second
-                                                                                           (:xy-nonil d18O-extremes-data))
-                                                                                     (mapv second
-                                                                                           (:xy-nonil d18O-other-data))))
-                                               ;; EXTREME
-                                               extreme-volume           (->> d18O-extremes-data
-                                                                             :xy-nonil
-                                                                             (mapv last)
-                                                                             (mapv :Rain-mm)
-                                                                             (filterv some?)
-                                                                             (apply +))
-                                               extreme-weighted-average (/ (->> d18O-extremes-data
-                                                                                :xy-nonil
-                                                                                (mapv (fn [[_
-                                                                                            d18O
-                                                                                            {:keys [Rain-mm]}]]
-                                                                                        (if (nil? Rain-mm)
-                                                                                          0
-                                                                                          (* d18O
-                                                                                             Rain-mm))))
-                                                                                (apply +))
-                                                                           extreme-volume)
-                                               ;; OTHER
-                                               other-volume             (->> d18O-other-data
-                                                                             :xy-nonil
-                                                                             (mapv last)
-                                                                             (mapv :Rain-mm)
-                                                                             (filterv some?)
-                                                                             (apply +))
-                                               other-weighted-average   (/ (->> d18O-other-data
-                                                                                :xy-nonil
-                                                                                (mapv (fn [[_
-                                                                                            d18O
-                                                                                            {:keys [Rain-mm]}]]
-                                                                                        (if (nil? Rain-mm)
-                                                                                          0
-                                                                                          (* d18O
-                                                                                             Rain-mm))))
-                                                                                (apply +))
-                                                                           other-volume)
-                                               #_#_
-                                               average-d18O-other       (/ (apply + (mapv *
-                                                                                          (vec (:Rain-mm other-events-table))
-                                                                                          (vec (:d18O other-events-table))))
-                                                                           (apply + (vec (:Rain-mm other-events-table))))]
-                                           (-> d18O-axis
-                                               (assoc :legend
-                                                      [["WINTER STORM"
-                                                        {:fill   "red"
-                                                         :stroke nil}]])
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/circles (:xy-nonil d18O-extremes-data)
-                                                                                  {:scale   (/ scale
-                                                                                               4.0)
-                                                                                   :attribs {:stroke       "red"
-                                                                                             :stroke-width (/ scale
-                                                                                                              20.0)
-                                                                                             :fill         "none"}})))
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/dashed-line [[0.0
-                                                                                        extreme-weighted-average]
-                                                                                       [last-day
-                                                                                        extreme-weighted-average]]
-                                                                                      {:attribs {:stroke-width 10.0
-                                                                                                 :stroke       "red"}})))
-                                               #_
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/circles points-other
-                                                                                  {:scale   (/ scale
-                                                                                               4.0)
-                                                                                   :attribs {:stroke       "blue"
-                                                                                             :stroke-width (/ scale
-                                                                                                              20.0)
-                                                                                             :fill         "none"}})))
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/dashed-line [[0.0
-                                                                                        other-weighted-average]
-                                                                                       [last-day
-                                                                                        other-weighted-average]]
-                                                                                      {:attribs {:stroke-width 10.0
-                                                                                                 :stroke       "blue"}})))
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/labels [[(* 0.33 ;; x offset
-                                                                                      last-day)
-                                                                                   (* max-val
-                                                                                      1.0)
-                                                                                   {:text              (str "WINTER STORMS: "
-                                                                                                            (format "%.2f"
-                                                                                                                    extreme-weighted-average)
-                                                                                                            " ("
-                                                                                                            (format "%.2f" (* 100
-                                                                                                                              (/ extreme-volume
-                                                                                                                                 (+ extreme-volume
-                                                                                                                                    other-volume))))
-                                                                                                            "% of total)")
-                                                                                    :fill              "red"
-                                                                                    :text-anchor       "beginning"
-                                                                                    :font-size         (/ scale
-                                                                                                          2)
-                                                                                    #_#_
-                                                                                    :dominant-baseline "hanging"}]])))
-                                               (update :data
-                                                       #(into %
-                                                              (quickthing/labels [[(* 0.33 ;; x offset
-                                                                                      last-day)
-                                                                                   (* max-val
-                                                                                      1.2)
-                                                                                   {:text              (str "NORMAL RAINS: "
-                                                                                                            (format "%.2f"
-                                                                                                                    other-weighted-average)
-                                                                                                            " ("
-                                                                                                            (format "%.2f" (* 100
-                                                                                                                              (/ other-volume
-                                                                                                                                 (+ extreme-volume
-                                                                                                                                    other-volume))))
-                                                                                                            "% of total)")
-                                                                                    :fill              "blue"
-                                                                                    :text-anchor       "beginning"
-                                                                                    :font-size         (/ scale
-                                                                                                          2)
-                                                                                    #_#_
-                                                                                    :dominant-baseline "hanging"}]])))
-                                               viz/svg-plot2d-cartesian))}))
+  {::d18O-below-select-layer (let [last-day                 (apply max ;; find last day
+                                                                   (into (mapv first
+                                                                               (:xy-nonil d18O-extremes-data))
+                                                                         (mapv first
+                                                                               (:xy-nonil d18O-other-data))))
+                                   max-val                  (apply max
+                                                                   (into (mapv second
+                                                                               (:xy-nonil d18O-extremes-data))
+                                                                         (mapv second
+                                                                               (:xy-nonil d18O-other-data))))
+                                   ;; EXTREME
+                                   extreme-volume           (->> d18O-extremes-data
+                                                                 :xy-nonil
+                                                                 (mapv last)
+                                                                 (mapv :Rain-mm)
+                                                                 (filterv some?)
+                                                                 (apply +))
+                                   extreme-weighted-average (/ (->> d18O-extremes-data
+                                                                    :xy-nonil
+                                                                    (mapv (fn [[_
+                                                                                d18O
+                                                                                {:keys [Rain-mm]}]]
+                                                                            (if (nil? Rain-mm)
+                                                                              0
+                                                                              (* d18O
+                                                                                 Rain-mm))))
+                                                                    (apply +))
+                                                               extreme-volume)
+                                   ;; OTHER
+                                   other-volume             (->> d18O-other-data
+                                                                 :xy-nonil
+                                                                 (mapv last)
+                                                                 (mapv :Rain-mm)
+                                                                 (filterv some?)
+                                                                 (apply +))
+                                   other-weighted-average   (/ (->> d18O-other-data
+                                                                    :xy-nonil
+                                                                    (mapv (fn [[_
+                                                                                d18O
+                                                                                {:keys [Rain-mm]}]]
+                                                                            (if (nil? Rain-mm)
+                                                                              0
+                                                                              (* d18O
+                                                                                 Rain-mm))))
+                                                                    (apply +))
+                                                               other-volume)
+                                   #_#_
+                                   average-d18O-other       (/ (apply + (mapv *
+                                                                              (vec (:Rain-mm other-events-table))
+                                                                              (vec (:d18O other-events-table))))
+                                                               (apply + (vec (:Rain-mm other-events-table))))]
+                               (-> d18O-axis
+                                   (assoc :legend
+                                          [["WINTER STORM"
+                                            {:fill   "red"
+                                             :stroke nil}]])
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/circles (:xy-nonil d18O-extremes-data)
+                                                                      {:scale   (/ scale
+                                                                                   4.0)
+                                                                       :attribs {:stroke       "red"
+                                                                                 :stroke-width (/ scale
+                                                                                                  20.0)
+                                                                                 :fill         "none"}})))
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/dashed-line [[0.0
+                                                                            extreme-weighted-average]
+                                                                           [last-day
+                                                                            extreme-weighted-average]]
+                                                                          {:attribs {:stroke-width 10.0
+                                                                                     :stroke       "red"}})))
+                                   #_
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/circles points-other
+                                                                      {:scale   (/ scale
+                                                                                   4.0)
+                                                                       :attribs {:stroke       "blue"
+                                                                                 :stroke-width (/ scale
+                                                                                                  20.0)
+                                                                                 :fill         "none"}})))
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/dashed-line [[0.0
+                                                                            other-weighted-average]
+                                                                           [last-day
+                                                                            other-weighted-average]]
+                                                                          {:attribs {:stroke-width 10.0
+                                                                                     :stroke       "blue"}})))
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/labels [[(* 0.33 ;; x offset
+                                                                          last-day)
+                                                                       (* max-val
+                                                                          1.0)
+                                                                       {:text              (str "WINTER STORMS: "
+                                                                                                (format "%.2f"
+                                                                                                        extreme-weighted-average)
+                                                                                                " ("
+                                                                                                (format "%.2f" (* 100
+                                                                                                                  (/ extreme-volume
+                                                                                                                     (+ extreme-volume
+                                                                                                                        other-volume))))
+                                                                                                "% of total)")
+                                                                        :fill              "red"
+                                                                        :text-anchor       "beginning"
+                                                                        :font-size         (/ scale
+                                                                                              2)
+                                                                        #_#_
+                                                                        :dominant-baseline "hanging"}]])))
+                                   (update :data
+                                           #(into %
+                                                  (quickthing/labels [[(* 0.33 ;; x offset
+                                                                          last-day)
+                                                                       (* max-val
+                                                                          1.2)
+                                                                       {:text              (str "NORMAL RAINS: "
+                                                                                                (format "%.2f"
+                                                                                                        other-weighted-average)
+                                                                                                " ("
+                                                                                                (format "%.2f" (* 100
+                                                                                                                  (/ other-volume
+                                                                                                                     (+ extreme-volume
+                                                                                                                        other-volume))))
+                                                                                                "% of total)")
+                                                                        :fill              "blue"
+                                                                        :text-anchor       "beginning"
+                                                                        :font-size         (/ scale
+                                                                                              2)
+                                                                        #_#_
+                                                                        :dominant-baseline "hanging"}]])))
+                                   viz/svg-plot2d-cartesian))})
 
 
 
@@ -1400,14 +1400,14 @@
             d18O-below-select-layer
             index-layer]}]
   {::pco/output [{::index-d18O-big-events-subplot [::hiccup]}]}
-  (p/vthread  {::index-d18O-big-events-subplot {::hiccup (-> (svg/group {}
-                                                                        grid-layer
-                                                                        index-layer
-                                                                        d18O-classified-layer
-                                                                        d18O-below-select-layer)
-                                                             (quickthing/svg-wrap [width
-                                                                                   height]
-                                                                                  width))}}))
+  {::index-d18O-big-events-subplot {::hiccup (-> (svg/group {}
+                                                            grid-layer
+                                                            index-layer
+                                                            d18O-classified-layer
+                                                            d18O-below-select-layer)
+                                                 (quickthing/svg-wrap [width
+                                                                       height]
+                                                                      width))}})
 
 #_#_
 (pco/defresolver $rain-d18O-index-2stack
@@ -1430,12 +1430,12 @@
             rain-d18O-classified-subplot
             index-subplot]}]
   {::pco/output [{::rain-d18O-classified-index-2stack [::hiccup]}]}
-  (p/vthread  {::rain-d18O-classified-index-2stack {::hiccup (-> (quickthing/group-plots-grid [[(::hiccup rain-d18O-classified-subplot)]
-                                                                                               [(::hiccup index-subplot)]])
-                                                                 (quickthing/svg-wrap [width
-                                                                                       (* 2.0
-                                                                                          height)]
-                                                                                      width))}}))
+  (identity  {::rain-d18O-classified-index-2stack {::hiccup (-> (quickthing/group-plots-grid [[(::hiccup rain-d18O-classified-subplot)]
+                                                                                              [(::hiccup index-subplot)]])
+                                                                (quickthing/svg-wrap [width
+                                                                                      (* 2.0
+                                                                                         height)]
+                                                                                     width))}}))
 
 (pco/defresolver $hist-count-all-subplot
   [{::keys [width
@@ -1455,49 +1455,49 @@
                                                   {:y [::stat/max]}]}
                                     ::stat/max]}]}]
    ::pco/output [{::hist-count-all-subplot [::hiccup]}]}
-  (p/vthread  {::hist-count-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
-                                                                                 0.0]
-                                                                                [d18O-range-max
-                                                                                 (-> d18O-rain
-                                                                                     :x
-                                                                                     ::stat/hist
-                                                                                     :y
-                                                                                     ::stat/max)]]
-                                                                               {:width       width
-                                                                                :height      height
-                                                                                :title       ""
-                                                                                :legend      [["ALL RAINY DAYS"
-                                                                                               {:fill   "lightgrey"
-                                                                                                :stroke "lightgrey"}]
-                                                                                              #_#_
-                                                                                              ["SUMMER MONSOON"
-                                                                                               {:fill   "#aa8800"
-                                                                                                :stroke nil}]
-                                                                                              ["WINTER MONSOON"
-                                                                                               {:fill   "#00aa88"
-                                                                                                :stroke nil}]]
-                                                                                :x-name      "d18O"
-                                                                                :y-name      "Counts"
-                                                                                :scale       scale
-                                                                                :margin-frac margin-frac
-                                                                                :color       "#0008"})
-                                                      (assoc :grid
-                                                             nil)
-                                                      (update :data
-                                                              #(into %
-                                                                     (quickthing/bars (->> d18O-rain
-                                                                                           :x
-                                                                                           ::stat/hist
-                                                                                           :xy-nonil)
-                                                                                      {:attribs {:stroke-width (/ width
-                                                                                                                  (* 3.0
-                                                                                                                     (- d18O-range-max
-                                                                                                                        d18O-range-min)))
-                                                                                                 :stroke       "lightgrey"}})))
-                                                      viz/svg-plot2d-cartesian
-                                                      (quickthing/svg-wrap [width
-                                                                            height]
-                                                                           width))}}))
+  {::hist-count-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+                                                                     0.0]
+                                                                    [d18O-range-max
+                                                                     (-> d18O-rain
+                                                                         :x
+                                                                         ::stat/hist
+                                                                         :y
+                                                                         ::stat/max)]]
+                                                                   {:width       width
+                                                                    :height      height
+                                                                    :title       ""
+                                                                    :legend      [["ALL RAINY DAYS"
+                                                                                   {:fill   "lightgrey"
+                                                                                    :stroke "lightgrey"}]
+                                                                                  #_#_
+                                                                                  ["SUMMER MONSOON"
+                                                                                   {:fill   "#aa8800"
+                                                                                    :stroke nil}]
+                                                                                  ["WINTER MONSOON"
+                                                                                   {:fill   "#00aa88"
+                                                                                    :stroke nil}]]
+                                                                    :x-name      "d18O"
+                                                                    :y-name      "Counts"
+                                                                    :scale       scale
+                                                                    :margin-frac margin-frac
+                                                                    :color       "#0008"})
+                                          (assoc :grid
+                                                 nil)
+                                          (update :data
+                                                  #(into %
+                                                         (quickthing/bars (->> d18O-rain
+                                                                               :x
+                                                                               ::stat/hist
+                                                                               :xy-nonil)
+                                                                          {:attribs {:stroke-width (/ width
+                                                                                                      (* 3.0
+                                                                                                         (- d18O-range-max
+                                                                                                            d18O-range-min)))
+                                                                                     :stroke       "lightgrey"}})))
+                                          viz/svg-plot2d-cartesian
+                                          (quickthing/svg-wrap [width
+                                                                height]
+                                                               width))}})
 
 (pco/defresolver $hist-count-classified-subplot
   [{::keys [width
@@ -1523,69 +1523,69 @@
                  {::d18O-rain-below [{:x [{::stat/hist [:xy-nonil]}
                                           ::stat/max]}]}]
    ::pco/output [{::hist-count-classified-subplot [::hiccup]}]}
-  (p/vthread  {::hist-count-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
-                                                                                        0.0]
-                                                                                       [d18O-range-max
-                                                                                        (-> d18O-rain
-                                                                                            :x
-                                                                                            ::stat/hist
-                                                                                            :y
-                                                                                            ::stat/max)]]
-                                                                                      {:width       width
-                                                                                       :height      height
-                                                                                       :title       ""
-                                                                                       :legend      [["" #_"ALL RAINY DAYS"
-                                                                                                      {:fill   "lightgrey"
-                                                                                                       :stroke "lightgrey"}]
-                                                                                                     ["SUMMER MONSOON"
-                                                                                                      {:fill   summer-color
-                                                                                                       :stroke nil}]
-                                                                                                     ["WINTER MONSOON"
-                                                                                                      {:fill   winter-color
-                                                                                                       :stroke nil}]]
-                                                                                       :x-name      "d18O"
-                                                                                       :y-name      "Counts"
-                                                                                       :scale       scale
-                                                                                       :margin-frac margin-frac
-                                                                                       :color       "#0008"})
-                                                             (assoc :grid
-                                                                    nil)
-                                                             (update :data
-                                                                     #(into %
-                                                                            (quickthing/bars (->> d18O-rain-above
-                                                                                                  :x
-                                                                                                  ::stat/hist
-                                                                                                  :xy-nonil
-                                                                                                  (mapv (fn [[x-coord
-                                                                                                              y-coord]]
-                                                                                                          [(- x-coord
-                                                                                                              0.125)
-                                                                                                           y-coord])))
-                                                                                             {:attribs {:stroke-width (/ width
-                                                                                                                         (* 6.0
-                                                                                                                            (- d18O-range-max
-                                                                                                                               d18O-range-min)))
-                                                                                                        :stroke       summer-color}})))
-                                                             (update :data
-                                                                     #(into %
-                                                                            (quickthing/bars (->> d18O-rain-below
-                                                                                                  :x
-                                                                                                  ::stat/hist
-                                                                                                  :xy-nonil
-                                                                                                  (mapv (fn [[x-coord
-                                                                                                              y-coord]]
-                                                                                                          [(+ x-coord
-                                                                                                              0.125)
-                                                                                                           y-coord])))
-                                                                                             {:attribs {:stroke-width (/ width
-                                                                                                                         (* 6.0
-                                                                                                                            (- d18O-range-max
-                                                                                                                               d18O-range-min)))
-                                                                                                        :stroke       winter-color}})))
-                                                             viz/svg-plot2d-cartesian
-                                                             (quickthing/svg-wrap [width
-                                                                                   height]
-                                                                                  width))}}))
+  {::hist-count-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+                                                                            0.0]
+                                                                           [d18O-range-max
+                                                                            (-> d18O-rain
+                                                                                :x
+                                                                                ::stat/hist
+                                                                                :y
+                                                                                ::stat/max)]]
+                                                                          {:width       width
+                                                                           :height      height
+                                                                           :title       ""
+                                                                           :legend      [["" #_"ALL RAINY DAYS"
+                                                                                          {:fill   "lightgrey"
+                                                                                           :stroke "lightgrey"}]
+                                                                                         ["SUMMER MONSOON"
+                                                                                          {:fill   summer-color
+                                                                                           :stroke nil}]
+                                                                                         ["WINTER MONSOON"
+                                                                                          {:fill   winter-color
+                                                                                           :stroke nil}]]
+                                                                           :x-name      "d18O"
+                                                                           :y-name      "Counts"
+                                                                           :scale       scale
+                                                                           :margin-frac margin-frac
+                                                                           :color       "#0008"})
+                                                 (assoc :grid
+                                                        nil)
+                                                 (update :data
+                                                         #(into %
+                                                                (quickthing/bars (->> d18O-rain-above
+                                                                                      :x
+                                                                                      ::stat/hist
+                                                                                      :xy-nonil
+                                                                                      (mapv (fn [[x-coord
+                                                                                                  y-coord]]
+                                                                                              [(- x-coord
+                                                                                                  0.125)
+                                                                                               y-coord])))
+                                                                                 {:attribs {:stroke-width (/ width
+                                                                                                             (* 6.0
+                                                                                                                (- d18O-range-max
+                                                                                                                   d18O-range-min)))
+                                                                                            :stroke       summer-color}})))
+                                                 (update :data
+                                                         #(into %
+                                                                (quickthing/bars (->> d18O-rain-below
+                                                                                      :x
+                                                                                      ::stat/hist
+                                                                                      :xy-nonil
+                                                                                      (mapv (fn [[x-coord
+                                                                                                  y-coord]]
+                                                                                              [(+ x-coord
+                                                                                                  0.125)
+                                                                                               y-coord])))
+                                                                                 {:attribs {:stroke-width (/ width
+                                                                                                             (* 6.0
+                                                                                                                (- d18O-range-max
+                                                                                                                   d18O-range-min)))
+                                                                                            :stroke       winter-color}})))
+                                                 viz/svg-plot2d-cartesian
+                                                 (quickthing/svg-wrap [width
+                                                                       height]
+                                                                      width))}})
 
 
 (pco/defresolver $hist-count-subplot
@@ -1596,12 +1596,12 @@
   {::pco/input  [::hist-count-all-subplot
                  ::hist-count-classified-subplot]
    ::pco/output [::hist-count-subplot]}
-  (p/vthread  {::hist-count-subplot {::hiccup (-> (svg/group {}
-                                                             (::hiccup hist-count-all-subplot)
-                                                             (::hiccup hist-count-classified-subplot))
-                                                  (quickthing/svg-wrap [width
-                                                                        height]
-                                                                       width))}}))
+  {::hist-count-subplot {::hiccup (-> (svg/group {}
+                                                 (::hiccup hist-count-all-subplot)
+                                                 (::hiccup hist-count-classified-subplot))
+                                      (quickthing/svg-wrap [width
+                                                            height]
+                                                           width))}})
 
 ;; Rain weighted histogram
 
@@ -1626,47 +1626,47 @@
                                              {:y [::stat/max]}]}
                                {:x [::stat/max]}]}]
    ::pco/output [{::hist-rain-all-subplot [::hiccup]}]}
-  (p/vthread  {::hist-rain-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
-                                                                                0.0]
-                                                                               [d18O-range-max
-                                                                                (-> d18O-rain
-                                                                                    ::stat/hist
-                                                                                    :y
-                                                                                    ::stat/max)]]
-                                                                              {:width       width
-                                                                               :height      height
-                                                                               :title       ""
-                                                                               :legend      [["ALL RAINY DAYS"
-                                                                                              {:fill   "lightgrey"
-                                                                                               :stroke "lightgrey"}]
-                                                                                             #_#_
-                                                                                             ["SUMMER MONSOON"
-                                                                                              {:fill   "#aa8800"
-                                                                                               :stroke nil}]
-                                                                                             ["WINTER MONSOON"
-                                                                                              {:fill   "#00aa88"
-                                                                                               :stroke nil}]]
-                                                                               :x-name      "d18O"
-                                                                               :y-name      "Rain (mm) per bin"
-                                                                               :scale       scale
-                                                                               :margin-frac margin-frac
-                                                                               :color       "#0008"})
-                                                     (assoc :grid
-                                                            nil)
-                                                     (update :data
-                                                             #(into %
-                                                                    (quickthing/bars (->> d18O-rain
-                                                                                          ::stat/hist
-                                                                                          :xy-nonil)
-                                                                                     {:attribs {:stroke-width (/ width
-                                                                                                                 (* 3.0
-                                                                                                                    (- d18O-range-max
-                                                                                                                       d18O-range-min)))
-                                                                                                :stroke       "lightgrey"}})))
-                                                     viz/svg-plot2d-cartesian
-                                                     (quickthing/svg-wrap [width
-                                                                           height]
-                                                                          width))}}))
+  {::hist-rain-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+                                                                    0.0]
+                                                                   [d18O-range-max
+                                                                    (-> d18O-rain
+                                                                        ::stat/hist
+                                                                        :y
+                                                                        ::stat/max)]]
+                                                                  {:width       width
+                                                                   :height      height
+                                                                   :title       ""
+                                                                   :legend      [["ALL RAINY DAYS"
+                                                                                  {:fill   "lightgrey"
+                                                                                   :stroke "lightgrey"}]
+                                                                                 #_#_
+                                                                                 ["SUMMER MONSOON"
+                                                                                  {:fill   "#aa8800"
+                                                                                   :stroke nil}]
+                                                                                 ["WINTER MONSOON"
+                                                                                  {:fill   "#00aa88"
+                                                                                   :stroke nil}]]
+                                                                   :x-name      "d18O"
+                                                                   :y-name      "Rain (mm) per bin"
+                                                                   :scale       scale
+                                                                   :margin-frac margin-frac
+                                                                   :color       "#0008"})
+                                         (assoc :grid
+                                                nil)
+                                         (update :data
+                                                 #(into %
+                                                        (quickthing/bars (->> d18O-rain
+                                                                              ::stat/hist
+                                                                              :xy-nonil)
+                                                                         {:attribs {:stroke-width (/ width
+                                                                                                     (* 3.0
+                                                                                                        (- d18O-range-max
+                                                                                                           d18O-range-min)))
+                                                                                    :stroke       "lightgrey"}})))
+                                         viz/svg-plot2d-cartesian
+                                         (quickthing/svg-wrap [width
+                                                               height]
+                                                              width))}})
 
 
 
@@ -1693,77 +1693,77 @@
                                                       {:y [::stat/max]}]}
                                         {:x [::stat/max]}]}]
    ::pco/output [{::hist-monsoon-classified-subplot [::hiccup]}]}
-  (p/vthread  {::hist-monsoon-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
-                                                                                          0.0]
-                                                                                         [d18O-range-max
-                                                                                          (max (-> d18O-monsoon-above
-                                                                                                   ::stat/hist
-                                                                                                   :y
-                                                                                                   ::stat/max)
-                                                                                               (-> d18O-monsoon-below
-                                                                                                   ::stat/hist
-                                                                                                   :y
-                                                                                                   ::stat/max))]]
-                                                                                        {:width       width
-                                                                                         :height      height
-                                                                                         :title       ""
-                                                                                         :legend      [["" #_"ALL RAINY DAYS"
-                                                                                                        {:fill   "lightgrey"
-                                                                                                         :stroke "lightgrey"}]
-                                                                                                       ["SUMMER MONSOON"
-                                                                                                        {:fill   summer-color
-                                                                                                         :stroke nil}]
-                                                                                                       ["WINTER MONSOON"
-                                                                                                        {:fill   winter-color
-                                                                                                         :stroke nil}]]
-                                                                                         :x-name      "d18O"
-                                                                                         :y-name      "Monsoon per bin"
-                                                                                         :scale       scale
-                                                                                         :margin-frac margin-frac
-                                                                                         :color       "#0008"})
-                                                               (assoc :grid
-                                                                      nil)
-                                                               (update :data
-                                                                       #(into %
-                                                                              (quickthing/bars (->> d18O-monsoon-above
-                                                                                                    ::stat/hist
-                                                                                                    :xy-nonil
-                                                                                                    (mapv (fn [[x-coord
-                                                                                                                y-coord]]
-                                                                                                            [(- x-coord
-                                                                                                                0.125)
-                                                                                                             y-coord])))
-                                                                                               {:attribs {:stroke-width (/ width
-                                                                                                                           (* 6.0
-                                                                                                                              (- d18O-range-max
-                                                                                                                                 d18O-range-min)))
-                                                                                                          :stroke       summer-color}})))
-                                                               (update :data
-                                                                       #(into %
-                                                                              (quickthing/bars (->> d18O-monsoon-below
-                                                                                                    ::stat/hist
-                                                                                                    :xy-nonil
-                                                                                                    (mapv (fn [[x-coord
-                                                                                                                y-coord]]
-                                                                                                            [(+ x-coord
-                                                                                                                0.125)
-                                                                                                             y-coord])))
-                                                                                               {:attribs {:stroke-width (/ width
-                                                                                                                           (* 6.0
-                                                                                                                              (- d18O-range-max
-                                                                                                                                 d18O-range-min)))
-                                                                                                          :stroke       winter-color}})))
-                                                               viz/svg-plot2d-cartesian
-                                                               (quickthing/svg-wrap [width
-                                                                                     height]
-                                                                                    width))}}))
+  {::hist-monsoon-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
+                                                                              0.0]
+                                                                             [d18O-range-max
+                                                                              (max (-> d18O-monsoon-above
+                                                                                       ::stat/hist
+                                                                                       :y
+                                                                                       ::stat/max)
+                                                                                   (-> d18O-monsoon-below
+                                                                                       ::stat/hist
+                                                                                       :y
+                                                                                       ::stat/max))]]
+                                                                            {:width       width
+                                                                             :height      height
+                                                                             :title       ""
+                                                                             :legend      [["" #_"ALL RAINY DAYS"
+                                                                                            {:fill   "lightgrey"
+                                                                                             :stroke "lightgrey"}]
+                                                                                           ["SUMMER MONSOON"
+                                                                                            {:fill   summer-color
+                                                                                             :stroke nil}]
+                                                                                           ["WINTER MONSOON"
+                                                                                            {:fill   winter-color
+                                                                                             :stroke nil}]]
+                                                                             :x-name      "d18O"
+                                                                             :y-name      "Monsoon per bin"
+                                                                             :scale       scale
+                                                                             :margin-frac margin-frac
+                                                                             :color       "#0008"})
+                                                   (assoc :grid
+                                                          nil)
+                                                   (update :data
+                                                           #(into %
+                                                                  (quickthing/bars (->> d18O-monsoon-above
+                                                                                        ::stat/hist
+                                                                                        :xy-nonil
+                                                                                        (mapv (fn [[x-coord
+                                                                                                    y-coord]]
+                                                                                                [(- x-coord
+                                                                                                    0.125)
+                                                                                                 y-coord])))
+                                                                                   {:attribs {:stroke-width (/ width
+                                                                                                               (* 6.0
+                                                                                                                  (- d18O-range-max
+                                                                                                                     d18O-range-min)))
+                                                                                              :stroke       summer-color}})))
+                                                   (update :data
+                                                           #(into %
+                                                                  (quickthing/bars (->> d18O-monsoon-below
+                                                                                        ::stat/hist
+                                                                                        :xy-nonil
+                                                                                        (mapv (fn [[x-coord
+                                                                                                    y-coord]]
+                                                                                                [(+ x-coord
+                                                                                                    0.125)
+                                                                                                 y-coord])))
+                                                                                   {:attribs {:stroke-width (/ width
+                                                                                                               (* 6.0
+                                                                                                                  (- d18O-range-max
+                                                                                                                     d18O-range-min)))
+                                                                                              :stroke       winter-color}})))
+                                                   viz/svg-plot2d-cartesian
+                                                   (quickthing/svg-wrap [width
+                                                                         height]
+                                                                        width))}})
 
 
 (pco/defresolver $monthly-tables
   [{::keys [table]}]
   {::pco/output [::monthly-tables]}
-  (p/vthread {::monthly-tables (ds/group-by table
-                                            :Month)}))
+  {::monthly-tables (ds/group-by table
+                                 :Month)})
 
 
 
@@ -1772,31 +1772,31 @@
   "Amount weighted averages"
   [{::keys [monthly-tables]}]
   {::pco/output [::monthly-averages]}
-  (p/vthread {::monthly-averages (into (sorted-map-by #(compare (.getValue %1)
-                                                                (.getValue %2)))
-                                       (update-vals monthly-tables
-                                                    (fn calculate-table-avergage
-                                                      [table-for-a-month]
-                                                      (let [valid-d18O-rain-pairs (filterv (fn [[d18O-val
-                                                                                                 Rain-val]]
-                                                                                             (and (some? d18O-val)
-                                                                                                  (some? Rain-val)))
-                                                                                           (mapv vector
-                                                                                                 (-> table-for-a-month
-                                                                                                     :d18O
-                                                                                                     vec)
-                                                                                                 (-> table-for-a-month
-                                                                                                     :Rain-mm
-                                                                                                     vec)))]
-                                                        (/ (->> valid-d18O-rain-pairs
-                                                                (mapv (fn [[d18O-val
-                                                                            Rain-val]]
-                                                                        (* d18O-val
-                                                                           Rain-val)))
-                                                                (apply +))
-                                                           (->> valid-d18O-rain-pairs
-                                                                (mapv second)
-                                                                (apply +)))))))}))
+  {::monthly-averages (into (sorted-map-by #(compare (.getValue %1)
+                                                     (.getValue %2)))
+                            (update-vals monthly-tables
+                                         (fn calculate-table-avergage
+                                           [table-for-a-month]
+                                           (let [valid-d18O-rain-pairs (filterv (fn [[d18O-val
+                                                                                      Rain-val]]
+                                                                                  (and (some? d18O-val)
+                                                                                       (some? Rain-val)))
+                                                                                (mapv vector
+                                                                                      (-> table-for-a-month
+                                                                                          :d18O
+                                                                                          vec)
+                                                                                      (-> table-for-a-month
+                                                                                          :Rain-mm
+                                                                                          vec)))]
+                                             (/ (->> valid-d18O-rain-pairs
+                                                     (mapv (fn [[d18O-val
+                                                                 Rain-val]]
+                                                             (* d18O-val
+                                                                Rain-val)))
+                                                     (apply +))
+                                                (->> valid-d18O-rain-pairs
+                                                     (mapv second)
+                                                     (apply +)))))))})
 
 
 
@@ -1898,17 +1898,17 @@
   "Amount weighted averages"
   [{::keys [table]}]
   {::pco/output [::rain-d18O]}
-  (p/vthread {::rain-d18O (filterv  (fn [[Rain-val
-                                          d18O-val]]
-                                      (and (some? d18O-val)
-                                           (some? Rain-val)))
-                                    (mapv vector
-                                          (-> table
-                                              :Rain-mm
-                                              vec)
-                                          (-> table
-                                              :d18O
-                                              vec)))}))
+  {::rain-d18O (filterv  (fn [[Rain-val
+                               d18O-val]]
+                           (and (some? d18O-val)
+                                (some? Rain-val)))
+                         (mapv vector
+                               (-> table
+                                   :Rain-mm
+                                   vec)
+                               (-> table
+                                   :d18O
+                                   vec)))})
 
 (defn- least-squares
   "Line is:
@@ -1929,20 +1929,20 @@
   "Amount weighted averages"
   [{::keys [rain-d18O]}]
   {::pco/output [::rain-d18O-line]}
-  (p/vthread {::rain-d18O-line (let [x-min       0.0
-                                     x-max       (->> rain-d18O
-                                                      (mapv first)
-                                                      (apply max))
-                                     {:keys [m
-                                             b]} (least-squares rain-d18O)]
-                                 [[x-min
-                                   (+ (* m
-                                         x-min)
-                                      b)]
-                                  [x-max
-                                   (+ (* m
-                                         x-max)
-                                      b)]])}))
+  {::rain-d18O-line (let [x-min       0.0
+                          x-max       (->> rain-d18O
+                                           (mapv first)
+                                           (apply max))
+                          {:keys [m
+                                  b]} (least-squares rain-d18O)]
+                      [[x-min
+                        (+ (* m
+                              x-min)
+                           b)]
+                       [x-max
+                        (+ (* m
+                              x-max)
+                           b)]])})
 #_
 (pco/defresolver $amount-effect-subplot
   "Amount weighted averages"
@@ -2028,39 +2028,37 @@
   "Amount weighted averages"
   [{::keys [table]}]
   {::pco/output [::d18O-dD]}
-  (p/vthread {::d18O-dD (filterv  (fn [[d18O-val
-                                        dD-val]]
-                                    (and (some? d18O-val)
-                                         (some? dD-val)))
-                                  (mapv (fn [a
-                                             b
-                                             c
-                                             d]
-                                          [a
-                                           b
-                                           (if c
-                                             {:fill   summer-color
-                                              :radius (if d
-                                                        (/ d
-                                                           4.0))}
-                                             {:fill   winter-color
-                                              :radius (if d
-                                                        (/ d
-                                                           4.0))})])
-                                        (-> table
-                                            :d18O
-                                            vec)
-                                        (-> table
-                                            :dD
-                                            vec)
-                                        (-> table
-                                            :Above?
-                                            vec)
-                                        (-> table
-                                            :Rain-mm
-                                            vec)))}))
-
-
+  {::d18O-dD (filterv  (fn [[d18O-val
+                             dD-val]]
+                         (and (some? d18O-val)
+                              (some? dD-val)))
+                       (mapv (fn [a
+                                  b
+                                  c
+                                  d]
+                               [a
+                                b
+                                (if c
+                                  {:fill   summer-color
+                                   :radius (if d
+                                             (/ d
+                                                4.0))}
+                                  {:fill   winter-color
+                                   :radius (if d
+                                             (/ d
+                                                4.0))})])
+                             (-> table
+                                 :d18O
+                                 vec)
+                             (-> table
+                                 :dD
+                                 vec)
+                             (-> table
+                                 :Above?
+                                 vec)
+                             (-> table
+                                 :Rain-mm
+                                 vec)))})
 
 
 (type (tick/between (tick/date "1951-01-01")

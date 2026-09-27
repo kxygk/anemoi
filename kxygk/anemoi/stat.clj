@@ -22,20 +22,20 @@
 
 (pco/defresolver $filter-nils
   [{:keys [data-vec]}]
-  {::pco/input [:data-vec]
+  {::pco/input  [:data-vec]
    ::pco/output [:data-vec-nonil]}
-  (p/vthread {:data-vec-nonil (->> data-vec
-                                   (filterv some?))}))
+  {:data-vec-nonil (->> data-vec
+                        (filterv some?))})
 
 (pco/defresolver $minmax
   [{:keys [data-vec-nonil]}]
-  {::pco/input [:data-vec-nonil]
+  {::pco/input  [:data-vec-nonil]
    ::pco/output [::min
                  ::max]}
-  (p/vthread {::min (apply min
-                           data-vec-nonil)
-              ::max (apply max
-                           data-vec-nonil)}))
+  {::min (apply min
+                data-vec-nonil)
+   ::max (apply max
+                data-vec-nonil)})
 
 (pco/defresolver $standard
   [{:keys [data-vec-nonil]}]
@@ -43,20 +43,20 @@
    ::pco/output [::standard-mean
                  ::standard-std
                  ::standard-sdom]}
-  (p/vthread (let [num (count data-vec-nonil)]
-               (let [average (/ (apply +
-                                       data-vec-nonil)
-                                num)]
-                 (let [std (clojure.math/sqrt (/ (->> data-vec-nonil
-                                                      (mapv #(clojure.math/pow (- %
-                                                                                  average)
-                                                                               2.0))
-                                                      (reduce +))
-                                                 (dec num)))]
-                   {::standard-mean average
-                    ::standard-std  std
-                    ::standard-sdom (/ std
-                                       (clojure.math/sqrt num))})))))
+  (let [num (count data-vec-nonil)]
+    (let [average (/ (apply +
+                            data-vec-nonil)
+                     num)]
+      (let [std (clojure.math/sqrt (/ (->> data-vec-nonil
+                                           (mapv #(clojure.math/pow (- %
+                                                                       average)
+                                                                    2.0))
+                                           (reduce +))
+                                      (dec num)))]
+        {::standard-mean average
+         ::standard-std  std
+         ::standard-sdom (/ std
+                            (clojure.math/sqrt num))}))))
 
 (pco/defresolver $weighted
   "This was taken from here:
@@ -71,57 +71,57 @@
    ::pco/output [::weighted-mean
                  ::weighted-std
                  ::weighted-sdom]}
-  (p/vthread (let [nonils (filterv some?
-                                   (mapv (fn [x-coord
-                                              y-coord]
-                                           (if (and x-coord
-                                                    y-coord)
-                                             [x-coord
-                                              y-coord]
-                                             nil))
-                                         (:data-vec x)
-                                         (:data-vec y)))
-                   x-vec (mapv first
-                               nonils)
-                   y-vec (mapv second
-                               nonils)]
-               (let [num                    (count x-vec) ;; same as `weight-vec`
-                     sum-of-weights         (reduce +
-                                                    y-vec)
-                     sum-of-squared-weights (->> y-vec
-                                                 (mapv #(clojure.math/pow %
-                                                                          2.0))
-                                                 (reduce +))
-                     weighted-sum           (->> (mapv *
-                                                       x-vec
-                                                       y-vec)
-                                                 (reduce +))]
-                 (let [mean (/ weighted-sum
-                               sum-of-weights)]
-                   (let [sum-of-residuals-squared (->> (mapv -
-                                                             x-vec
-                                                             (repeat num
-                                                                     mean))
-                                                       (mapv #(clojure.math/pow %
-                                                                                2.0))
-                                                       (reduce +))]
-                     (let [variance (-> sum-of-residuals-squared
-                                        (/ (dec num))
-                                        (* (/ (/ sum-of-squared-weights
-                                                 num)
-                                              (clojure.math/pow (/ sum-of-weights
-                                                                   num)
-                                                                2.0))))]
-                       {::weighted-mean mean
-                        ::weighted-std  (clojure.math/sqrt variance)
-                        ::weighted-sdom (* (clojure.math/sqrt variance)
-                                           (->> y-vec
-                                                (mapv #(/ %
-                                                          sum-of-weights))
-                                                (mapv #(clojure.math/pow %
-                                                                         2.0))
-                                                (reduce +)
-                                                clojure.math/sqrt))})))))))
+  (let [nonils (filterv some?
+                        (mapv (fn [x-coord
+                                   y-coord]
+                                (if (and x-coord
+                                         y-coord)
+                                  [x-coord
+                                   y-coord]
+                                  nil))
+                              (:data-vec x)
+                              (:data-vec y)))
+        x-vec  (mapv first
+                     nonils)
+        y-vec  (mapv second
+                     nonils)]
+    (let [num                    (count x-vec) ;; same as `weight-vec`
+          sum-of-weights         (reduce +
+                                         y-vec)
+          sum-of-squared-weights (->> y-vec
+                                      (mapv #(clojure.math/pow %
+                                                               2.0))
+                                      (reduce +))
+          weighted-sum           (->> (mapv *
+                                            x-vec
+                                            y-vec)
+                                      (reduce +))]
+      (let [mean (/ weighted-sum
+                    sum-of-weights)]
+        (let [sum-of-residuals-squared (->> (mapv -
+                                                  x-vec
+                                                  (repeat num
+                                                          mean))
+                                            (mapv #(clojure.math/pow %
+                                                                     2.0))
+                                            (reduce +))]
+          (let [variance (-> sum-of-residuals-squared
+                             (/ (dec num))
+                             (* (/ (/ sum-of-squared-weights
+                                      num)
+                                   (clojure.math/pow (/ sum-of-weights
+                                                        num)
+                                                     2.0))))]
+            {::weighted-mean mean
+             ::weighted-std  (clojure.math/sqrt variance)
+             ::weighted-sdom (* (clojure.math/sqrt variance)
+                                (->> y-vec
+                                     (mapv #(/ %
+                                               sum-of-weights))
+                                     (mapv #(clojure.math/pow %
+                                                              2.0))
+                                     (reduce +)
+                                     clojure.math/sqrt))}))))))
 
 (defn-
   bin-to-range

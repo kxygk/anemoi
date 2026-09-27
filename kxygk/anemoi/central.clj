@@ -141,7 +141,8 @@
                                                 plot/$resolvers$
                                                 generic/$resolvers$]))
       (pcp/with-plan-cache plan-cache*)
-      pathmore/inject-simple-cache-for-all-resolvers))
+      pathmore/inject-simple-cache-for-all-resolvers
+      pathmore/wrap-all-resolvers-async))
 
 ;;#_
 (-> @(p.a.eql/process env
