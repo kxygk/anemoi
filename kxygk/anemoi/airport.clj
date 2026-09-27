@@ -51,8 +51,6 @@
       d2 (tick/date "2024-01-05")]
   (compare d1 d2))
 
-
-
 (pco/defresolver $read-file
   [{::keys [filestr]}]
   {::raw-table (-> filestr
@@ -177,8 +175,6 @@ So they need to coerced to `vec`"
   {::table-classified (tech.v3.dataset.join/left-join :Date
                                                       index-table
                                                       airport-table)})
-
-
 
 (pco/defresolver $extract-table-classified-columns
   "Extract the columsn from the table.

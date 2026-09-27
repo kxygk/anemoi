@@ -20,37 +20,37 @@
             ]}]
   {::pco/output [::raw-table]}
   {::raw-table (->> dirstr
-                     clojure.java.io/file
-                     file-seq
-                     sort
-                     rest
-                     (mapv (fn [fileobj]
-                             (ds/->dataset fileobj
-                                           {:dataset-name "Regional Climate Index"
-                                            :header-row? true ;; doesn't work b/c of an empty line after the header..
-                                            :n-initial-skip-rows 1
-                                            :bad-row-policy :error
-                                            :key-fn       kxygk.anemoi.util/normalize-colname})))
-                     (apply ds/concat)
-                     ;; cryptic column names detailed here:
-                     ;; https://zenodo.org/records/14681370
-                     ;;
-                     ;; `tmp2m`: 2m temperature (°C)
-                     ;;
-                     ;; `pr` (H₂¹⁶O), `pr1` (H₂¹⁸O), `pr2` (HD¹⁶O):
-                     ;; Precipitation isotopes (mm/day) (raw data, non-filtered data)
-                     ;;
-                     ;; `sh` (H₂¹⁶O), `sh1` (H₂¹⁸O), `sh2` (HD¹⁶O):
-                     ;; Near-surface specific humidity isotopes (kg/kg)
-                     ;;
-                     (#(ds/rename-columns %
-                                          {:column-0 #_:tmp2m :Temperature
-                                           :column-1 #_:pr    :Rain-H2-16O
-                                           :column-2 #_:pr1   :Rain-H2-18O
-                                           :column-3 #_:pr2   :Rain-D2-16O
-                                           :column-4 #_:sh    :Vapor-H2-16O
-                                           :column-5 #_:sh1   :Vapor-H2-18O
-                                           :column-6 #_:sh2   :Vapor-D2-16O})))})
+                    clojure.java.io/file
+                    file-seq
+                    sort
+                    rest
+                    (mapv (fn [fileobj]
+                            (ds/->dataset fileobj
+                                          {:dataset-name        "Regional Climate Index"
+                                           :header-row?         true ;; doesn't work b/c of an empty line after the header..
+                                           :n-initial-skip-rows 1
+                                           :bad-row-policy      :error
+                                           :key-fn              kxygk.anemoi.util/normalize-colname})))
+                    (apply ds/concat)
+                    ;; cryptic column names detailed here:
+                    ;; https://zenodo.org/records/14681370
+                    ;;
+                    ;; `tmp2m`: 2m temperature (°C)
+                    ;;
+                    ;; `pr` (H₂¹⁶O), `pr1` (H₂¹⁸O), `pr2` (HD¹⁶O):
+                    ;; Precipitation isotopes (mm/day) (raw data, non-filtered data)
+                    ;;
+                    ;; `sh` (H₂¹⁶O), `sh1` (H₂¹⁸O), `sh2` (HD¹⁶O):
+                    ;; Near-surface specific humidity isotopes (kg/kg)
+                    ;;
+                    (#(ds/rename-columns %
+                                         {:column-0 #_:tmp2m :Temperature
+                                          :column-1 #_:pr    :Rain-H2-16O
+                                          :column-2 #_:pr1   :Rain-H2-18O
+                                          :column-3 #_:pr2   :Rain-D2-16O
+                                          :column-4 #_:sh    :Vapor-H2-16O
+                                          :column-5 #_:sh1   :Vapor-H2-18O
+                                          :column-6 #_:sh2   :Vapor-D2-16O})))})
 #_
 (pathmore/check ::raw-table)
 
@@ -82,9 +82,9 @@
   {::table (assoc raw-table
                   :Date
                   (->> -all-dates-vec
-                      ;; depends on if index has them or not! Should add back TODO!!!!!!
-                      ;; Ideally this should be diabled
-                      ;;#_
+                       ;; depends on if index has them or not! Should add back TODO!!!!!!
+                       ;; Ideally this should be diabled
+                       ;;#_
                        ;;tock/remove-leapdays
                        (take (ds/row-count raw-table))))})
 #_
@@ -94,7 +94,7 @@
 
 (pco/defresolver $extract-table-columns
   [{::keys [table]
-   :keys [start-date]}]
+    :keys  [start-date]}]
   {::pco/output [{::data [:Date
                           :start-date
                           :Temperature
@@ -105,9 +105,9 @@
                           :Vapor-H2-18O
                           :Vapor-D2-16O]}]}
   {::data (merge {:start-date start-date}
-                (update-vals (into {}
-                                   table)
-                             vec))})
+                 (update-vals (into {}
+                                    table)
+                              vec))})
 #_
 (pathmore/check [{::data [:Temperature]}]
                 {:start-date #time/date "2011-01-01"
@@ -146,10 +146,10 @@ https://zenodo.org/records/14681370
            Rain-H2-18O
            Vapor-H2-16O
            Vapor-H2-18O]}]
-  {:Rain-mm Rain-H2-16O
-   :Rain-d18O (mapv calc-d18O
-                   Rain-H2-16O
-                   Rain-H2-18O)
+  {:Rain-mm    Rain-H2-16O
+   :Rain-d18O  (mapv calc-d18O
+                     Rain-H2-16O
+                     Rain-H2-18O)
    :Vapor-d18O (mapv calc-d18O
                      Vapor-H2-16O
                      Vapor-H2-18O)})
