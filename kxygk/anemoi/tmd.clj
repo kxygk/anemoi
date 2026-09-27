@@ -1,6 +1,7 @@
 (ns kxygk.anemoi.tmd
   "Stuff that's still too small to put in a separate lib"
   (:require [kxygk.anemoi.stat :as stat]
+            [kxygk.pathmore.core :as pathmore]
             ;;[kxygk.dripsplit.central :as central]
             [clojure.math]
             [clojure.string]
@@ -135,14 +136,12 @@
                              y-coord))
                       xy-all))})
 
-(def env
-  (pci/register [$column-extractor
-                 $table-column-filter
-                 $vectorizer
-                 $devectorizer
-                 $no-nil-filter]))
+(def $resolvers$
+  (->> [(pathmore/find-resolvers)
+        kxygk.anemoi.generic/$resolvers$]
+       flatten
+       (mapv pathmore/inject-simple-cache)))
 
-(get 
-{true 5
- false 5}
-true)
+(def $env$
+  (pci/register {::p.a.eql/parallel? true}
+                $resolvers$))

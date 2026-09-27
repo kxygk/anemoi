@@ -6,7 +6,15 @@
             [tick.core                    :as tick]
             [tech.v3.dataset              :as ds]
             [tock]
+            [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.util]))
+
+(pathmore/clean-ns!)
+
+(def $state$
+  "for testing only"
+  {::filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                  "climate-index.csv")})
 
 (pco/defresolver $read-table
   [{::keys [filestr
@@ -18,11 +26,7 @@
                    (ds/rename-columns [:Above-Index
                                        :Below-Index]))})
 #_
-(->> @(p.a.eql/process env
-                       {::filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                       "climate-index.csv")} 
-                       [::raw-table])
-     ::raw-table)
+(pathmore/check ::raw-table)
 
 (pco/defresolver $-all-dates-vec
   [{:keys [start-date
@@ -33,19 +37,9 @@
                            (tick/at end-date (tick/midnight)) ;; doesn't include last value
                            (tick/new-duration 24 :hours)))})
 #_
-(->> @(p.a.eql/process env
-                       {:start-date #time/date"2011-01-01"
-                        :end-date   #time/date"2031-01-01"}
-                       [::-all-dates-vec])
-     ::-all-dates-vec
-     (take 5))
-#_
-(-> ($-all-dates-vec {::start-date #time/date"2011-01-01"
-                     ::end-date   #time/date"2021-01-01"})
-    deref
-    ::all-dates-vec
-    count)
-;; => 3650
+(pathmore/check ::-all-dates-vec
+                {:start-date #time/date"2011-01-01"
+                 :end-date   #time/date"2031-01-01"})
 
 (pco/defresolver $add-dates
   [{::keys [raw-table
@@ -60,13 +54,9 @@
                        tock/remove-leapdays
                        (take (ds/row-count raw-table))))})
 #_
-(->> @(p.a.eql/process env
-                       {::filestr    (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                          "climate-index.csv")
-                        ::start-date #time/date "2011-01-01"
-                        ::end-date   #time/date "2021-01-01"} 
-                       [::table])
-     ::table)
+(pathmore/check ::table
+                {:start-date #time/date"2011-01-01"
+                 :end-date   #time/date"2031-01-01"})
 
 (pco/defresolver $extract-table-columns
   [{::keys [table]
@@ -86,12 +76,9 @@
                                    table)
                              vec))})
 #_
-(-> @(p.a.eql/process env
-                      {::filestr    (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                         "climate-index.csv")
-                       ::start-date #inst"2011-01-01"
-                       ::end-date   #inst"2021-01-01"}
-                      [:Above-Index]))
+(pathmore/check [{::data [:Above-Index]}]
+                {:start-date #time/date"2011-01-01"
+                 :end-date   #time/date"2031-01-01"})
 
 (pco/defresolver $is-above?
   [{:keys [Above-Index]}]
@@ -100,42 +87,15 @@
                            zero?
                            not)))})
 #_
-(-> @(p.a.eql/process env
-                      {::filestr    (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                         "climate-index.csv")
-                       ::start-date #inst"2011-01-01"
-                       ::end-date   #inst"2021-01-01"}
-                      [:Above?]))
+(pathmore/check [{::data [:Above?]}]
+                {:start-date #time/date"2011-01-01"
+                 :end-date   #time/date"2031-01-01"})
   
-(def env
+
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
+
+(def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$read-table
-                 $-all-dates-vec
-                 $add-dates
-                 $extract-table-columns
-                 $is-above?]))
-
-
- 
-(let [pr1 8.416052 ;; 69.62872;;36.26312 
-      pr 8.509018 ;;70.23905 ;;36.58453
-      ]
-
-  (* 1000
-     (- (/ pr1
-           pr)
-        1)))
-
-#_#_#_
-(defn my-function
-  [{:keys! [username]
-    :keys  [firstname
-           lastname]}]
-  (do-stuff username
-            firstname
-            lastname))
-
-(my function {:firstname "John"})
-
-(my function {:firstname "John"
-              :username nil})
+                $resolvers$))

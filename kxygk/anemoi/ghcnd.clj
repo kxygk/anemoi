@@ -9,6 +9,8 @@
   "
   (:require [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd  :as tmd]
+            [kxygk.pathmore.core :as pathmore]
+            [kxygk.anemoi.util :as util]
             ;;[kxygk.dripsplit.central :as central]
             [clojure.math]
             [clojure.string]
@@ -31,19 +33,12 @@
             [tech.v3.dataset.join         :as tjoin]
             ))
 
-(defn normalize-colname
-  [colname-str]
-  (-> colname-str
-      (clojure.string/replace " "
-                              "-")
-      (clojure.string/replace "("
-                              "")
-      (clojure.string/replace ")"
-                              "")
-      keyword))
+(pathmore/clean-ns!)
 
-
-(true? nil)
+(def $state$
+  "for testing only"
+  {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                            "TH000048552.csv")})
 
 (defn date2cycle-fraction
   [date]
@@ -106,28 +101,7 @@
                     ds/row-count
                     inc ))))}))
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::table]))
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-table])
-    ::nakhon-table
-    :Day
-    vec)
-;; (:STATION :DATE :LATITUDE :LONGITUDE :ELEVATION :NAME :PRCP :PRCP_ATTRIBUTES :TMAX :TMAX_ATTRIBUTES :TMIN :TMIN_ATTRIBUTES :TAVG :TAVG_ATTRIBUTES)
-#_
-(-> @(p.a.eql/process env
-                      {::nakhon-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::nakhon-table])
-    ::nakhon-table
-    :DATE
-    first
-    tick/year)
+(pathmore/check ::table)
 
 (pco/defresolver $daily-rain
   [{::keys [table]
@@ -142,10 +116,7 @@
                  ::tmd/meta-keys meta-keys
                  ::tmd/table table}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [{::daily-rain [::tmd/table]}]))
+(pathmore/check [{::daily-rain [::tmd/table]}])
 
 (pco/defresolver $by-year
   [{::keys [table]}]
@@ -161,12 +132,7 @@
                                               str
                                               Integer/parseInt)))}))
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                             "TH000048552.csv")}
-                      [::by-year])
-    ::by-year
-    keys)
+(pathmore/check ::by-year)
 
 (pco/defresolver $annual-rain
   [{::keys [by-year]}]
@@ -179,12 +145,7 @@
                                (mapv identity)
                                sort)}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                "TH000048552"
-                                ".csv")}
-                      [{::annual-rain [:y]}]))
-
+(pathmore/check [{::annual-rain [:y]}]) ;; BROKEN, missing :xy-all resolver. Where is it..?
 
 (pco/defresolver $annual-storm-count
   [{::keys [by-year
@@ -201,12 +162,8 @@
                                       (mapv identity)
                                       sort)}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                "TH000048552"
-                                                ".csv")
-                       ::storm-threshold-mm      100}
-                      [{::annual-storm-count [:xy-all]}]))
+(pathmore/check [{::annual-storm-count [:xy-all]}]
+                {::storm-threshold-mm 100})
 
 (pco/defresolver $annual-storm-fraction
   [{::keys [by-year
@@ -231,12 +188,8 @@
                                          (mapv identity)
                                          sort)}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                "TH000048552"
-                                ".csv")
-                       ::storm-threshold-mm      100}
-                      [{::annual-storm-fraction [:xy-all]}]))
+(pathmore/check [{::annual-storm-fraction [:xy-all]}]
+                {::storm-threshold-mm 100})
 
 (pco/defresolver $annual-storm-rain
   [{::keys [by-year
@@ -264,12 +217,8 @@
                                      (mapv identity)
                                      sort)}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                "TH000048552"
-                                                ".csv")
-                       ::storm-threshold-mm      100}
-                      [{::annual-storm-rain [:y]}]))
+(pathmore/check [{::annual-storm-rain [:xy-all]}]
+                {::storm-threshold-mm 100})
 
 (defn classify-winter
   "Winter classified to the closest new-year
@@ -300,11 +249,8 @@
       (do (println "Date/Month unrecognized!")
           nil))))
 #_
-(->> @(p.a.eql/process env
-                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                 "TH000048552.csv")}
-                       [::by-year])
-     ::by-year
+(->> ::by-year
+     pathmore/check
      first
      second
      :DATE
@@ -320,14 +266,7 @@
                                                           (mapv classify-winter)))
                             (ds/group-by :WINTER))}))
 #_
-(->> @(p.a.eql/process env
-                       {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                 "TH000048552.csv")}
-                       [::by-winter])
-     ::by-winter
-     keys)
-
-(some? nil)
+(pathmore/check ::by-winter)
 
 (pco/defresolver $winter-storm-rain
   [{::keys [by-winter
@@ -355,13 +294,9 @@
                                          (dissoc nil))
                                      (mapv identity) ;; make it into [x y] pairs for platting
                                      sort)}})
-  #_
-  (-> @(p.a.eql/process env
-                        {::raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                  "TH000048552"
-                                                  ".csv")
-                         ::storm-threshold-mm 100}
-                        [{::winter-storm-rain [:xy-all]}]))
+#_
+(pathmore/check ::winter-storm-rain
+                {::storm-threshold-mm 100})
 
 (pco/defresolver $winter-storm-count
   [{::keys [by-winter
@@ -378,24 +313,15 @@
                                       (mapv identity)
                                       sort)}})
 #_
-(-> @(p.a.eql/process env
-                      {::raingauge-filestr (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                "TH000048552"
-                                                ".csv")
-                       ::storm-threshold-mm      100}
-                      [{::annual-storm-count [:y]}]))
+(pathmore/check ::winter-storm-count
+                {::storm-threshold-mm 100})
 
+(def $resolvers$
+  (->> [(pathmore/find-resolvers)
+        kxygk.anemoi.stat/$resolvers$]
+       flatten
+       (mapv pathmore/inject-simple-cache)))
 
-
-(def env
+(def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$filestr->table
-                 $daily-rain
-                 $by-year
-                 $annual-rain
-                 $annual-storm-count
-                 $annual-storm-fraction
-                 $annual-storm-rain
-                 $by-winter
-                 $winter-storm-rain
-                 $winter-storm-count]))
+                $resolvers$))

@@ -5,27 +5,19 @@
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
             [tech.v3.dataset              :as ds]
             [tick.core                    :as tick]
+            [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.util]))
+
+(pathmore/clean-ns!)
+
+
+(def $state$
+  "for testing only"
+  {::filestr (str "/home/kxygk/Data/enso/"
+                  "nina34.anom.csv")})
 
 (pbir/constantly-resolver :math/PI
                           3.1415)
-
-(defn normalize-colname
-  [colname-str]
-  (-> colname-str
-      (clojure.string/replace " "
-                              "-")
-      (clojure.string/replace "("
-                              "")
-      (clojure.string/replace ")"
-                              "")
-      keyword))
-#_
-(normalize-colname "Rain (mm)")
-(let [d1 (tick/date "2024-01-01")
-      d2 (tick/date "2024-01-05")]
-  (compare d1 d2))
-
 
 (pco/defresolver $read-table
   [{::keys [filestr]}]
@@ -45,6 +37,8 @@
                                                                            :months))]
                                {:Year  (tick/year adjusted-date )
                                 :Month (tick/month adjusted-date)}))))})
+#_
+(pathmore/check ::table)
 #_
 (->> @(p.a.eql/process env
                       {::filestr (str "/home/kxygk/Data/enso/"
@@ -104,14 +98,12 @@
                      table)
                vec))
 #_
-@(p.a.eql/process env
-                  {::filestr (str "/home/kxygk/Data/enso/"
-                                  "nina34.anom.csv")}
-                  [:EnsoIndex])
+(pathmore/check :EnsoIndex)
 
-;; (:RefDate :EnsoIndex :Year :Month)
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
 
-(def env
+(def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$read-table
-                 $extract-table-columns]))
+                $resolvers$))

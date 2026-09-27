@@ -2,6 +2,7 @@
   (:require [clojure.math]
             [clojure.string]
             kxygk.pathmore.cache
+            [kxygk.pathmore.core :as pathmore]
             [com.wsscode.pathom3.connect.planner :as pcp]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.operation :as pco]
@@ -10,6 +11,8 @@
             [tick.core                    :as tick]
             [tick.locale-en-us]
             [promesa.core :as p]))
+
+(pathmore/clean-ns!)
 
 (pco/defresolver $data-vec-identity
   [input]
@@ -232,9 +235,15 @@
                                  (/ day-num-of-date
                                     days-in-year)))))
 
-(def plan-cache*
-  (atom {}))
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
 
+(def $env$
+  (pci/register {::p.a.eql/parallel? true}
+                $resolvers$))
+
+#_
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
                     [$data-vec-identity

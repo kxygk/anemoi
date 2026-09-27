@@ -6,7 +6,14 @@
             [tick.core                    :as tick]
             [tech.v3.dataset              :as ds]
             [tock]
+            [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.util]))
+
+(pathmore/clean-ns!)
+
+(def $state$
+  "for testing only"
+  {::dirstr (str "/home/kxygk/Data/IsoGSM/csv/")} )
 
 (pco/defresolver $read-tables
   [{::keys [dirstr
@@ -45,37 +52,7 @@
                                            :column-5 #_:sh1   :Vapor-H2-18O
                                            :column-6 #_:sh2   :Vapor-D2-16O})))})
 #_
-(->> @(p.a.eql/process env
-                       {::dirstr (str "/home/kxygk/Data/IsoGSM/csv/")} 
-                       [::raw-table])
-     ::raw-table)
-;; (:Temperature :Rain-H2-16O :Rain-H2-18O :Rain-D2-16O :Vapor-H2-16O :Vapor-H2-18O :Vapor-D2-16O)
-
-
-#_ 
-(let [pr1 8.416052 ;; 69.62872;;36.26312 
-      pr 8.509018 ;;70.23905 ;;36.58453
-      ]
-
-  (* 1000
-     (- (/ pr1
-           pr)
-        1)))
-
-
-
-#_
-(->> "/home/kxygk/Data/IsoGSM/csv/"
-     clojure.java.io/file
-     file-seq
-     sort
-     rest
-    )
-(tick/new-duration 6 :hours)
-
-;;#object[java.io.File 0x25eb6076 "/home/kxygk/Data/IsoGSM/csv"]
-
-(tick/midnight)
+(pathmore/check ::raw-table)
 
 (pco/defresolver $-all-dates-vec
   [{:keys [start-date
@@ -94,14 +71,9 @@
                          (mapv #(tick/format (tick/formatter "yyyy-MM-dd")
                                              %)))})
 #_
-(->> @(p.a.eql/process env
-                       {:start-date #time/date "2011-01-01"
-                        :end-date   #time/date "2021-01-01"}
-                       [::-all-dates-vec])
-     ::-all-dates-vec
-     (take 5))
-
-
+(pathmore/check ::-all-dates-vec
+                {:start-date #time/date "2011-01-01"
+                 :end-date   #time/date "2021-01-01"})
 
 (pco/defresolver $add-dates ;; TODO Should also add the `:Day-from-start`.. since there are no skipped days 
   [{::keys [raw-table
@@ -116,12 +88,9 @@
                        ;;tock/remove-leapdays
                        (take (ds/row-count raw-table))))})
 #_
-(->> @(p.a.eql/process env
-                       {::dirstr (str "/home/kxygk/Data/IsoGSM/csv/")
-                        :start-date #time/date "2011-01-01"
-                        :end-date   #time/date "2021-01-01"} 
-                       [::table])
-     ::table)
+(pathmore/check ::table
+                {:start-date #time/date "2011-01-01"
+                 :end-date   #time/date "2021-01-01"})
 
 (pco/defresolver $extract-table-columns
   [{::keys [table]
@@ -140,11 +109,9 @@
                                    table)
                              vec))})
 #_
-(-> @(p.a.eql/process env
-                       {::dirstr (str "/home/kxygk/Data/IsoGSM/csv/")
-                        :start-date #time/date "2011-01-01"
-                        :end-date   #time/date "2021-01-01"} 
-                      [{::data [:Temperature]}]))
+(pathmore/check [{::data [:Temperature]}]
+                {:start-date #time/date "2011-01-01"
+                 :end-date   #time/date "2021-01-01"})
 
 (defn
   calc-d18O
@@ -186,48 +153,16 @@ https://zenodo.org/records/14681370
    :Vapor-d18O (mapv calc-d18O
                    Vapor-H2-16O
                    Vapor-H2-18O)})
-#_
-(-> @(p.a.eql/process env
-                      {::dirstr    (str "/home/kxygk/Data/IsoGSM/csv/")
-                       :start-date #time/date "2011-01-01"
-                       :end-date   #time/date "2021-01-01"} 
-                      [{::data [:d18O-estimate]}]))
-  
-(def env
+                     Vapor-H2-16O
+                     Vapor-H2-18O)})
+#_(pathmore/check [{::data [:Vapor-H2-18O]}]
+                  {:start-date #time/date "2011-01-01"
+                   :end-date   #time/date "2021-01-01"})
+
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
+
+(def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$read-tables
-                 $-all-dates-vec
-                 $add-dates
-                 $extract-table-columns
-                 $d18O]))
-
-
-#_
-(-> @(p.a.eql/process env
-                      {::dirstr    (str "/home/kxygk/Data/IsoGSM/portland/extracted/")
-                       :start-date #time/date "2011-01-01"
-                       :end-date   #time/date "2025-01-01"} 
-                      [{::data [:Rain-H2-16O]}]))
-#_
-(let [data @(p.a.eql/process env
-                             {::dirstr    (str "/home/kxygk/Data/IsoGSM/csv/"
-                                               #_"/home/kxygk/Data/IsoGSM/portland/extracted/")
-                                         :start-date #time/date "2011-01-01"
-                                         :end-date   #time/date "2025-01-01"} 
-                                        [::table
-                                         {::data [:Rain-d18O
-                                                  :Vapor-d18O]}])
-      table (-> data
-                ::table)
-      Rain-d18O (-> data
-                    ::data
-                    :Rain-d18O)
-      Vapor-d18O (-> data
-                     ::data
-                     :Vapor-d18O)]
-  (-> table
-      (assoc :Rain-d18O
-             Rain-d18O)
-      (assoc :Vapor-d18O
-             Vapor-d18O)
-      (ds/write! "isogsm-krabis.csv")))
+                $resolvers$))

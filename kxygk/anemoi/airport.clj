@@ -1,6 +1,8 @@
 (ns kxygk.anemoi.airport
   (:require [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.enso :as enso]
+            kxygk.anemoi.generic
+            [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.index :as index]
             [clojure.math]
             [clojure.string]
@@ -23,6 +25,12 @@
             [tech.v3.dataset.join         :as tjoin]
             ))
 
+(pathmore/clean-ns!)
+
+(def $state$
+  "for testing only"
+  {::filestr (str "/home/kxygk/Data/airport/"
+                  "first-sheet-extracted.csv")})
 
 (pbir/constantly-resolver :math/PI
                           3.1415)
@@ -59,13 +67,15 @@
                                                      :float64}
                                   :key-fn           normalize-colname}))})
 #_
-(-> @(p.a.eql/process env
-                      {::filestr (str "/home/kxygk/Data/airport/"
-                                      "first-sheet-extracted.csv")}
-                      [::raw-table])
-    ::raw-table
+(-> ::raw-table
+    pathmore/check
     ds/column-names)
-;; (:Date :Rain-mm :d18O :dD :Comment)
+#_
+(-> ::raw-table
+    pathmore/check
+    :Date
+    vec)
+
 
 (pco/defresolver $nil-d18O-dates
   [{::keys [raw-table]}]
@@ -80,13 +90,8 @@
                         flatten
                         set)})
 #_
-@(p.a.eql/process env
-                  {::filestr (str "/home/kxygk/Data/airport/"
-                                  "first-sheet-extracted.csv")}
-                  [::nil-d18O-dates])
-
-
-;;#{#time/date "2013-09-08" #time/date "2013-09-25"}
+(-> ::nil-d18O-dates
+    pathmore/check)
 
 (pco/defresolver $outoforder-dates
   [{::keys [raw-table]}]
@@ -100,12 +105,7 @@
                            flatten
                            set)})
 #_
-(-> @(p.a.eql/process env
-                      @central/*state
-                      [::problematic-dates])
-    ::problematic-dates)
-;; #{#time/date "2019-01-03" #time/date "2012-04-04" #time/date "2012-05-05" #time/date "2012-06-05" #time/date "2012-09-05" #time/date "2015-09-05" #time/date "2014-09-06" #time/date "2020-04-08" #time/date "2015-12-08" #time/date "2015-07-09" #time/date "2014-12-09" #time/date "2023-10-10" #time/date "2010-10-15" #time/date "2018-10-16" #time/date "2020-09-18" #time/date "2019-10-22" #time/date "2012-05-24" #time/date "2012-02-25" #time/date "2023-11-25" #time/date "2019-12-25" #time/date "2020-04-26" #time/date "2021-11-27" #time/date "2021-06-29" #time/date "2022-09-29" #time/date "2020-10-29"}
-
+(pathmore/check ::outoforder-dates)
 
 (pco/defresolver $clean-table
   [{::keys [raw-table
@@ -144,13 +144,8 @@
                (ds/column-cast :Rain-mm
                                :float64))})
 #_
-@(p.a.eql/process env
-                  {::filestr     (str "/home/kxygk/Data/airport/"
-                                      "first-sheet-extracted.csv")
-                   ::crazy-dates #{#time/date "2017-07-30"}}
-                  [::table])
-
-
+(pathmore/check ::table
+                {::crazy-dates #{#time/date "2017-07-30"}})
 
 (pco/defresolver $extract-table-columns
   "Extract the columsn from the table.
@@ -170,13 +165,9 @@ So they need to coerced to `vec`"
                                     table)
                               vec))})
 #_
-@(p.a.eql/process env
-                  {::filestr     (str "/home/kxygk/Data/airport/"
-                                      "first-sheet-extracted.csv")
-                   :start-date   #time/date "2011-01-01"
-                   ::crazy-dates #{#time/date "2017-07-30"}}
-                  [{::data [:Date]}])
-
+(pathmore/check [{::data [:Days-from-start]}]
+                {:start-date   #time/date "2011-01-01"
+                 ::crazy-dates #{#time/date "2017-07-30"}})
 
 (pco/defresolver $full-table
   [{airport-table ::table
@@ -234,13 +225,12 @@ So they need to coerced to `vec`"
                                                (:Year klang-table)
                                                (:d18O klang-table)))}))
 
-(def env
+(def $resolvers$
+  (->> [(pathmore/find-resolvers)
+        kxygk.anemoi.generic/$resolvers$]
+       flatten
+       (mapv pathmore/inject-simple-cache)))
+
+(def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$read-file
-                 $nil-d18O-dates
-                 $outoforder-dates
-                 $clean-table
-                 $full-table
-                 $extract-table-columns
-                 $extract-table-classified-columns
-                 ]))
+                $resolvers$))

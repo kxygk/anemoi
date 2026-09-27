@@ -6,6 +6,7 @@
             [kxygk.anemoi.airport :as airport]
             [kxygk.anemoi.index :as index]
             [kxygk.anemoi.isogsm :as isogsm]
+            [kxygk.pathmore.core :as pathmore]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.operation :as pco]
@@ -26,6 +27,8 @@
             [tech.v3.dataset.join         :as tjoin]
             #_[injest.classical]
             #_[clojure.data.csv]))
+
+(pathmore/clean-ns!)
 
 (def summer-color "#aa8800")
 (def winter-color "#00aa88")
@@ -1117,9 +1120,15 @@
                                                                  width))}})
 
 
-(def plan-cache*
-  (atom {}))
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
 
+(def $env$
+  (pci/register {::p.a.eql/parallel? true}
+                $resolvers$))
+
+#_
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
                     [$hiccup2svg

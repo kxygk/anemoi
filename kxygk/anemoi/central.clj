@@ -9,6 +9,7 @@
             [kxygk.anemoi.plot :as plot]
             [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd :as tmd]
+            [kxygk.pathmore.core :as pathmore]
             kxygk.pathmore.cache
             ;;
             [criterium.core :refer [bench]]
@@ -124,20 +125,23 @@
 (def plan-cache*
   (atom {}))
 
+
+;;(pathmore/dedupe-resolvers
+
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
-                    [$repacked
-                     airport/env
-                     enso/env
-                     index/env
-                     isogsm/env
-                     ghcnd/env
-                     stat/env
-                     tmd/env
-                     plot/env
-                     generic/env])
+                    (pathmore/dedupe-resolvers [$repacked
+                                                airport/$resolvers$
+                                                enso/$resolvers$
+                                                index/$resolvers$
+                                                isogsm/$resolvers$
+                                                ghcnd/$resolvers$
+                                                stat/$resolvers$
+                                                tmd/env
+                                                plot/$resolvers$
+                                                generic/$resolvers$]))
       (pcp/with-plan-cache plan-cache*)
-      kxygk.pathmore.cache/inject-for-all-resolvers))
+      pathmore/inject-simple-cache-for-all-resolvers))
 
 ;;#_
 (-> @(p.a.eql/process env
