@@ -151,8 +151,6 @@ https://zenodo.org/records/14681370
                    Rain-H2-16O
                    Rain-H2-18O)
    :Vapor-d18O (mapv calc-d18O
-                   Vapor-H2-16O
-                   Vapor-H2-18O)})
                      Vapor-H2-16O
                      Vapor-H2-18O)})
 #_(pathmore/check [{::data [:Vapor-H2-18O]}]
