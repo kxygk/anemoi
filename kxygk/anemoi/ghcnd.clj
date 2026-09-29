@@ -54,54 +54,128 @@
                                       date
                                       :days)]
     (/ day-num-of-date
-       days-in-year))) 
+       days-in-year)))
 
 (pco/defresolver $filestr->table
-  [{::keys [raingauge-filestr
-            start-date
-            end-date]
-    :or    {start-date nil
-            end-date   nil}}]
-  {::pco/output [::table]}
-  {::table
-   (let [raw-table (-> raingauge-filestr
-                       (ds/->dataset {:dataset-name "Nakhon GHCNd"
-                                      :key-fn       util/normalize-colname})
-                       ;; GHCNd data in "(tenths of mm)"
-                       ;; see:
-                       ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
-                       (ds/row-map (fn rain-gauge-reformat
-                                     [row-data]
-                                     (-> row-data
-                                         (assoc :PRCP
-                                                (if (nil? (:PRCP row-data))
-                                                  nil
-                                                  (* (:PRCP row-data)
-                                                     0.1)))
-                                         (assoc :fill
-                                                (-> row-data
-                                                    :DATE
-                                                    date2cycle-fraction
-                                                    quickthing/color-cycle)))))
-                       ;; optionally filter on start/end dates
-                       (ds/filter-column :DATE
-                                         #(if start-date
-                                            (tick/> %
-                                                    (tick/date start-date))
-                                            true))
-                       (ds/filter-column :DATE
-                                         #(if end-date
-                                            (tick/< %
-                                                    (tick/date end-date))
-                                            true)))]
-     (assoc raw-table
-            :Day
-            (range 1
-                   (-> raw-table
-                       ds/row-count
-                       inc ))))})
+  [{::keys [raingauge-filestr]}]
+  {::pco/output [::table
+                 ::start-date
+                 ::ended-date]}
+  (let [raw-table (-> raingauge-filestr
+                      (ds/->dataset {:dataset-name "Nakhon GHCNd"
+                                     :key-fn       util/normalize-colname})
+                      ;; GHCNd data in "(tenths of mm)"
+                      ;; see:
+                      ;; https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
+                      (ds/row-map (fn rain-gauge-reformat
+                                    [row-data]
+                                    (-> row-data
+                                        (assoc :PRCP
+                                               (if (nil? (:PRCP row-data))
+                                                 nil
+                                                 (* (:PRCP row-data)
+                                                    0.1)))
+                                        (assoc :fill
+                                               (-> row-data
+                                                   :DATE
+                                                   date2cycle-fraction
+                                                   quickthing/color-cycle)))))
+                      (ds/rename-columns [:Station
+                                          :Date
+                                          :Lat
+                                          :Lon
+                                          :Elevation
+                                          :Name
+                                          :PRCP
+                                          :PRCP-attribs
+                                          :T-max
+                                          :T-max-attribs
+                                          :T-min
+                                          :T-min-attribs
+                                          :T-avg
+                                          :T-avg-attribs
+                                          :fill
+                                          #_
+                                          :Day])
+                      ;; optionally filter on start/end dates
+                      #_#_
+                      (ds/filter-column :DATE
+                                        #(if start-date
+                                           (tick/> %
+                                                   (tick/date start-date))
+                                           true))
+                      (ds/filter-column :DATE
+                                        #(if end-date
+                                           (tick/< %
+                                                   (tick/date end-date))
+                                           true)))]
+    {::table      raw-table #_ (assoc raw-table
+                                      :Day
+                                      (range 1
+                                             (-> raw-table
+                                                 ds/row-count
+                                                 inc )))
+     ::start-date (->> raw-table
+                       :Date
+                       first)
+     ::ended-date (->> raw-table
+                       :Date
+                       last)}
+    ))
 #_
-(pathmore/check ::table)
+(ds/column-names (pathmore/check ::table))
+#_(:STATION :DATE :LATITUDE :LONGITUDE :ELEVATION :NAME :PRCP :PRCP_ATTRIBUTES :TMAX :TMAX_ATTRIBUTES :TMIN :TMIN_ATTRIBUTES :TAVG :TAVG_ATTRIBUTES :fill :Day)
+#_
+(pathmore/check ::start-date)
+#_
+(pathmore/check ::ended-date)
+
+(pco/defresolver $extract-table-columns
+  "Extract the columsn from the table.
+Note that unfortunately they can't be treated as collections directly b/c of bug
+See: https://github.com/techascent/tech.ml.dataset/issues/479
+So they need to coerced to `vec`"
+  [{::keys [table
+            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  {::pco/output [{::data [:start-date
+                          :Station
+                          :Date
+                          :Lat
+                          :Lon
+                          :Elevation
+                          :Name
+                          :PRCP
+                          :PRCP-attribs
+                          :T-max
+                          :T-max-attribs
+                          :T-min
+                          :T-min-attribs
+                          :T-avg
+                          :T-avg-attribs
+                          :fill]}]}
+  (println (str "GHCND Start Date: "
+                start-date))
+  {::data (merge {:start-date start-date}
+                 (update-vals (into {}
+                                    table)
+                              vec))})
+#_
+(pathmore/check [{::data [:Date]}])
+#_
+(let [pack (pathmore/check [{::data [:Days-from-start
+                                     :PRCP]}])]
+  (mapv vector
+        (-> pack
+            :data
+            :Days-from-start)))
+
+#_
+(-> (pathmore/check [{::data [:Days-from-start]}]
+                    {::start-date "2022-01-01"})
+    ::data
+    :Days-from-start
+    last)
+;;1331.0
 
 (pco/defresolver $daily-rain
   [{::keys     [table]

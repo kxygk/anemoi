@@ -15,14 +15,26 @@
   "for testing only"
   {::dirstr (str "/home/kxygk/Data/IsoGSM/csv/")} )
 
-(pco/defresolver $read-tables
+(pco/defresolver $read-dir
   [{::keys [dirstr
             ]}]
-  {::pco/output [::raw-table]}
-  {::raw-table (->> dirstr
+  {::file| (->> dirstr
                     clojure.java.io/file
                     file-seq
                     sort
+                    rest)}) ;; `first` is dir path
+#_
+(-> ::file|
+    pathmore/check
+    first
+    str)
+;;"/home/kxygk/Data/IsoGSM/csv/Lon_98.90618_Lat_8.005731_IsoGSM.HR_2011_6hourly_tmp2m.precip.sh.csv"
+
+(pco/defresolver $read-tables
+  [{::keys [file|
+            ]}]
+  {::pco/output [::raw-table]}
+  {::raw-table (->> file|
                     rest
                     (mapv (fn [fileobj]
                             (ds/->dataset fileobj
@@ -54,13 +66,51 @@
 #_
 (pathmore/check ::raw-table)
 
+(defn get-file-year [file-path]
+  (let [pattern #"IsoGSM\.HR_(\d{4})"]
+    (some->> file-path
+             (re-find pattern)
+             second)))
+;;(int "2022")
+#_
+(->> ::file|
+     pathmore/check
+     first
+     str
+     get-file-year
+     Integer/parseInt
+     inc
+     (str "01-01-"))
+
+(pco/defresolver $get-time-range
+  [{::keys [file|
+            ]}]
+  {::start-date (-> file|
+                     first
+                     str
+                     get-file-year
+                     (str "-01-01")
+                     tick/date)
+   ::ended-date (-> file|
+                     last
+                     str
+                     get-file-year
+                     Integer/parseInt
+                     inc
+                     (str "-01-01")
+                     tick/date)})
+#_
+(pathmore/check ::start-date)
+#_
+(pathmore/check ::ended-date)
+
 (pco/defresolver $-all-dates-vec
-  [{:keys [start-date
-           end-date]}]
+  [{::keys [start-date
+           ended-date]}]
   {::pco/output [::-all-dates-vec]}
   {::-all-dates-vec (->> (tick/range
                            (tick/at start-date (tick/midnight))
-                           (tick/at end-date (tick/midnight)) ;; doesn't include last value
+                           (tick/at ended-date (tick/midnight)) ;; doesn't include last value
                            (tick/new-duration 6 :hours))
                          #_
                          (mapv tick/date)
@@ -71,9 +121,9 @@
                          (mapv #(tick/format (tick/formatter "yyyy-MM-dd")
                                              %)))})
 #_
-(pathmore/check ::-all-dates-vec
-                {:start-date #time/date "2011-01-01"
-                 :end-date   #time/date "2021-01-01"})
+(-> ::-all-dates-vec
+    pathmore/check
+    last)
 
 (pco/defresolver $add-dates ;; TODO Should also add the `:Day-from-start`.. since there are no skipped days 
   [{::keys [raw-table
@@ -88,13 +138,11 @@
                        ;;tock/remove-leapdays
                        (take (ds/row-count raw-table))))})
 #_
-(pathmore/check ::table
-                {:start-date #time/date "2011-01-01"
-                 :end-date   #time/date "2021-01-01"})
+(pathmore/check ::table)
 
 (pco/defresolver $extract-table-columns
-  [{::keys [table]
-    :keys  [start-date]}]
+  [{::keys [table
+            start-date]}]
   {::pco/output [{::data [:Date
                           :start-date
                           :Temperature
@@ -109,9 +157,7 @@
                                     table)
                               vec))})
 #_
-(pathmore/check [{::data [:Temperature]}]
-                {:start-date #time/date "2011-01-01"
-                 :end-date   #time/date "2021-01-01"})
+(pathmore/check [{::data [:Temperature]}])
 
 (defn
   calc-d18O
@@ -153,7 +199,8 @@ https://zenodo.org/records/14681370
    :Vapor-d18O (mapv calc-d18O
                      Vapor-H2-16O
                      Vapor-H2-18O)})
-#_(pathmore/check [{::data [:Vapor-H2-18O]}]
+#_
+(pathmore/check [{::data [:Vapor-H2-18O]}]
                   {:start-date #time/date "2011-01-01"
                    :end-date   #time/date "2021-01-01"})
 

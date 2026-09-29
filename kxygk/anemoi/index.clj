@@ -29,17 +29,17 @@
 (pathmore/check ::raw-table)
 
 (pco/defresolver $-all-dates-vec
-  [{:keys [start-date
-           end-date]}]
+  [{::keys [start-date
+            ended-date]}]
   {::pco/output [::-all-dates-vec]}
   {::-all-dates-vec (->> (tick/range
                            (tick/at start-date (tick/midnight))
-                           (tick/at end-date (tick/midnight)) ;; doesn't include last value
+                           (tick/at ended-date (tick/midnight)) ;; doesn't include last value
                            (tick/new-duration 24 :hours)))})
 #_
 (pathmore/check ::-all-dates-vec
-                {:start-date #time/date"2011-01-01"
-                 :end-date   #time/date"2031-01-01"})
+                {::start-date #time/date"2011-01-01"
+                 ::end-date   #time/date"2031-01-01"})
 
 (pco/defresolver $add-dates
   [{::keys [raw-table
@@ -48,19 +48,18 @@
   {::table (assoc raw-table
                   :Date
                   (->> -all-dates-vec
-                      ;; depends on if index has them or not! Should add back TODO!!!!!!
-                      ;; Ideally this should be diabled
-                      ;;#_
+                       ;; depends on if index has them or not! Should add back TODO!!!!!!
+                       ;; Ideally this should be diabled
+                       ;;#_
                        tock/remove-leapdays
-                       (take (ds/row-count raw-table))))})
-#_
+                       (take (ds/row-count raw-table))))})#_
 (pathmore/check ::table
-                {:start-date #time/date"2011-01-01"
-                 :end-date   #time/date"2031-01-01"})
+                {::start-date #time/date"2011-01-01"
+                 ::end-date   #time/date"2031-01-01"})
 
 (pco/defresolver $extract-table-columns
   [{::keys [table]
-   :keys [start-date]}]
+    :keys  [start-date]}]
   {::pco/output [{::data [:start-date
                           :Date
                           :Above-Index
@@ -72,9 +71,9 @@
   ;; but there is a bug: https://github.com/techascent/tech.ml.dataset/issues/479
   ;; Use this for now
   {::data (merge {:start-date start-date}
-                (update-vals (into {}
-                                   table)
-                             vec))})
+                 (update-vals (into {}
+                                    table)
+                              vec))})
 #_
 (pathmore/check [{::data [:Above-Index]}]
                 {:start-date #time/date"2011-01-01"
@@ -90,7 +89,7 @@
 (pathmore/check [{::data [:Above?]}]
                 {:start-date #time/date"2011-01-01"
                  :end-date   #time/date"2031-01-01"})
-  
+
 
 (def $resolvers$
   (->> (pathmore/find-resolvers)

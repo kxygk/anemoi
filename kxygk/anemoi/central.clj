@@ -80,6 +80,8 @@
                                               "csv/"
                                               #_"csv-nakhon/")
          ::airport/crazy-dates           #{#time/date "2017-07-30"}
+         ::index/start-date              #time/date"2011-01-01"
+         ::index/ended-date              #time/date"2031-01-01"
          :start-date                     #time/date"2011-01-01"
          :end-date                       #time/date"2031-01-01" ;; Set to 2031 for now
          ::plot/cycle-start-value        2011
@@ -100,7 +102,8 @@
                       [:start-date]))
 
 (pco/defresolver $repacked
-  [{::plot/keys    [width
+  [{:keys          [nakhon-gauge]
+    ::plot/keys    [width
                     height
                     scale
                     margin-frac
@@ -109,10 +112,10 @@
                     cycle-phase]
     ::airport/keys [filestr
                     crazy-dates]
-    ::index/keys   [filestr]
+    ::index/keys   [filestr
+                    start-date
+                    ended-date]
     ::isogsm/keys  [dirstr]
-    :keys          [start-date
-                    end-date]
     :as            inputs}]
   {::figures (merge {} #_inputs
                     {::modern (merge inputs
@@ -137,7 +140,7 @@
                                                 isogsm/$resolvers$
                                                 ghcnd/$resolvers$
                                                 stat/$resolvers$
-                                                tmd/env
+                                                tmd/$resolvers$
                                                 plot/$resolvers$
                                                 generic/$resolvers$]))
       (pcp/with-plan-cache plan-cache*)
