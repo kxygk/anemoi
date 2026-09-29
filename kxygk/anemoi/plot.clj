@@ -1119,15 +1119,6 @@
                                                                   height]
                                                                  width))}})
 
-
-(def $resolvers$
-  (->> (pathmore/find-resolvers)
-       (mapv pathmore/inject-simple-cache)))
-
-(def $env$
-  (pci/register {::p.a.eql/parallel? true}
-                $resolvers$))
-
 #_
 (def env
   (-> (pci/register {::p.a.eql/parallel? true}
@@ -1166,28 +1157,21 @@
       kxygk.pathmore.cache/inject-for-all-resolvers))
 
 
-
-
-
-
-
-
-
-(pco/defresolver $nakhon-modern-rain-layer
+(pco/defresolver $nakhon-rain-layer
   "Rains in Nakhon"
-  [{::keys [width
+  [{:keys [nakhon-gauge]
+    ::keys [width
             height
             scale
-            margin-frac
-            nakhon-gauge-modern]}]
+            margin-frac]}]
   {::pco/input  [::width
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge-modern [{::ghcnd/daily-rain [:xy-nonil
-                                                              :y]}]}]
+                 {:nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil
+                                                        :y]}]}]
    ::pco/output [{::nakhon-modern-rain-layer [::hiccup]}]}
-  (let [rain-xy (-> nakhon-gauge-modern
+  (let [rain-xy (-> nakhon-gauge
                     ::ghcnd/daily-rain
                     :xy-nonil)]
     {::nakhon-modern-rain-layer {::hiccup (-> (quickthing/primary-axis rain-xy
@@ -1237,6 +1221,15 @@
                                                                                 height]
                                                                                width))}})
 
+
+
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
+
+(def $env$
+  (pci/register {::p.a.eql/parallel? true}
+                $resolvers$))
 
 #_
 ((ds/filter-column glued

@@ -82,6 +82,17 @@
          ::airport/crazy-dates           #{#time/date "2017-07-30"}
          ::index/start-date              #time/date"2011-01-01"
          ::index/ended-date              #time/date"2031-01-01"
+         :nakhon-gauge                   {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                          "TH000048552"
+                                                                          ".csv")
+                                          #_#_#_#_#_#_
+                                          ::ghcnd/storm-threshold-mm (-> inputs
+                                                                         ::big-storm-mm)
+                                          ::ghcnd/start-date         (-> inputs
+                                                                         ::start-date)
+                                          ::ghcnd/end-date           (-> inputs
+                                                                         ::end-date)}
+         #_#_#_#_
          :start-date                     #time/date"2011-01-01"
          :end-date                       #time/date"2031-01-01" ;; Set to 2031 for now
          ::plot/cycle-start-value        2011
@@ -117,10 +128,39 @@
                     ended-date]
     ::isogsm/keys  [dirstr]
     :as            inputs}]
+  {::pco/output [{::figures [{::modern   [{:nakhon-gauge [::ghcnd/raingauge-filestr]}
+                                          ::plot/width
+                                          ::plot/height
+                                          ::plot/scale
+                                          ::plot/margin-frac
+                                          ::plot/cycle-start-value
+                                          ::plot/cycle-length
+                                          ::plot/cycle-phase
+                                          ::airport/filestr
+                                          ::airport/crazy-dates
+                                          ::index/filestr
+                                          ::index/start-date
+                                          ::index/end-date
+                                          ::isogsm/dirstr]
+                              ::historic [:nakhon-gauge
+                                          ::plot/width
+                                          ::plot/height
+                                          ::plot/scale
+                                          ::plot/margin-frac
+                                          ::plot/cycle-start-value
+                                          ::plot/cycle-length
+                                          ::plot/cycle-phase
+                                          ::airport/filestr
+                                          ::airport/crazy-dates
+                                          ::index/filestr
+                                          ::index/start-date
+                                          ::index/end-date
+                                          ::isogsm/dirstr]}]}]}
   {::figures (merge {} #_inputs
                     {::modern (merge inputs
                                      #_
                                      {::airport/data {:start-date start-date}})}
+                    {::historical (merge inputs)}
                     #_#_
                     {::plot/airport-classified inputs}
                     {::plot/index-data inputs})})
@@ -147,63 +187,65 @@
       pathmore/inject-simple-cache-for-all-resolvers
       pathmore/wrap-all-resolvers-async))
 
-;;#_
+#_
 (-> @(p.a.eql/process env
                       @*state
                       [{::figures [{::modern [::isogsm/table]}]}]))
 
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::isogsm/data [:Date]}]}]}]))
 
 #_
 (-> @(p.a.eql/process env
                       @*state
-                      [{::figures [{::modern [{::isogsm/data [:Days-from-start]}]}]}]))
-
-
+                      [{::figures [{::modern [:nakhon-gauge]}]}]))
+;;#:kxygk.anemoi.central{:figures #:kxygk.anemoi.central{:modern {:nakhon-gauge #:kxygk.anemoi.ghcnd{:raingauge-filestr "/home/kxygk/Data/GHCNd/daily-summaries-latest/TH000048552.csv"}}}}
 #_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/day-isogsm-rain-d18O [:y]}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/day-isogsm-rain-d18O [:xy-nonil]}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/day-isogsm-vapor-d18O [:xy-nonil]}]}]}]))
 
 #_
 (-> @(p.a.eql/process env
                       @*state
-                      [{::figures [{::modern [::plot/isogsm-vapor-d18O-layer]}]}]))
-
+                      [{::figures [{::modern {:nakhon-gauge [::plot/width]}}]}]))
 
 #_
 (-> @(p.a.eql/process env
                       @*state
-                      [{::figures [{::modern [::plot/day-num-max]}]}]))
+                      [{::figures [{::modern [{:nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil]}]}]}]}]))
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::plot/nakhon-modern-rain-layer [::plot/svg]}]}]}]))
 
 
 ;;#_
 (defn gen-plots []
-  (let [figs (->> [{::figures [{::modern [{::plot/meteoric-water-line-subplot [::plot/svg]}
-                                          {::plot/amount-effect-subplot [::plot/svg]}
-                                          {::plot/rain-subplot [::plot/svg]}
-                                          {::plot/rain-d18O-subplot [::plot/svg]}
-                                          {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                          {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                          {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                          {::plot/index-subplot [::plot/svg]}
-                                          {::plot/index-d18O-subplot [::plot/svg]}
-                                          {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
-                                          {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                          {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
-                                          #_
-                                          {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}]}]}]
+  (let [figs (->> [{::figures [{::modern     [{::plot/meteoric-water-line-subplot [::plot/svg]}
+                                              {::plot/amount-effect-subplot [::plot/svg]}
+                                              {::plot/rain-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/index-subplot [::plot/svg]}
+                                              {::plot/index-d18O-subplot [::plot/svg]}
+                                              {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                              {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
+                                              #_
+                                              {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}]
+                                ::historical [{::plot/meteoric-water-line-subplot [::plot/svg]}
+                                              {::plot/amount-effect-subplot [::plot/svg]}
+                                              {::plot/rain-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/index-subplot [::plot/svg]}
+                                              {::plot/index-d18O-subplot [::plot/svg]}
+                                              {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}]}]}]
                   (p.a.eql/process env
                                    (merge @*state
                                           {::big-storm-mm 0.0}))
@@ -218,6 +260,9 @@
                       (spit (str "./out/all-"
                                  (name key)
                                  ".svg"))))))))
+
+#_
+(time (gen-plots))
 
 (time (gen-plots))
 

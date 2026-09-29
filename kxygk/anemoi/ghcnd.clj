@@ -7,7 +7,8 @@
    ::tmd/table _]
   Which can be unpacked by the `tmd` namespace
   "
-  (:require [kxygk.anemoi.stat :as stat]
+  (:require kxygk.anemoi.generic
+            [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.tmd  :as tmd]
             [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.util :as util]
@@ -178,19 +179,19 @@ So they need to coerced to `vec`"
 ;;1331.0
 
 (pco/defresolver $daily-rain
-  [{::keys     [table]
-    ::tmd/keys [meta-keys]}]
-  {::pco/input  [::table
-                 (pco/? ::tmd/meta-keys)]
-   ::pco/output [{::daily-rain [::tmd/x-key
-                                ::tmd/y-key
-                                ::tmd/table]}]}
-  {::daily-rain {::tmd/x-key     :Day
-                 ::tmd/y-key     :PRCP
-                 ::tmd/meta-keys meta-keys
-                 ::tmd/table     table}})
+  [{::keys     [data]}]
+  {::pco/input  [{::data [:Days-from-start
+                          :PRCP]}]
+   ::pco/output [{::daily-rain [{:x [:data-vec]}
+                                {:y [:data-vec]}]}]}
+  {::daily-rain {:x {:data-vec (:Days-from-start data)}
+                 :y {:data-vec (:PRCP data)}}})
 #_
-(pathmore/check [{::daily-rain [::tmd/table]}])
+(pathmore/check ::data)
+#_
+(pathmore/check ::daily-rain)
+#_
+(pathmore/check [{::daily-rain [:xy-nonil]}])
 
 (pco/defresolver $by-year
   [{::keys [table]}]
@@ -392,7 +393,7 @@ So they need to coerced to `vec`"
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)
-        kxygk.anemoi.stat/$resolvers$]
+        kxygk.anemoi.tmd/$resolvers$]
        flatten
        (mapv pathmore/inject-simple-cache)))
 
