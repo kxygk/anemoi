@@ -30,7 +30,16 @@
 (def $state$
   "for testing only"
   {::filestr (str "/home/kxygk/Data/airport/"
-                  "first-sheet-extracted.csv")})
+                  "first-sheet-extracted.csv")
+   ::index/filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                        "climate-index.csv") ;; gets `joined` in to the airport table
+   #_#_#_#_   ;; for testing manual override of dates
+   ::index/start-date              #time/date"2011-01-01"
+   ::index/ended-date                #time/date"2031-01-01"})
+#_
+(-> ::index/table
+    pathmore/check)
+
 
 (pbir/constantly-resolver :math/PI
                           3.1415)
@@ -72,7 +81,9 @@
 (-> ::raw-table
     pathmore/check
     :Date
-    vec)
+    vec
+    sort
+    last)
 
 
 (pco/defresolver $nil-d18O-dates
@@ -145,6 +156,19 @@
 (pathmore/check ::table
                 {::crazy-dates #{#time/date "2017-07-30"}})
 
+(pco/defresolver $start-ended-dates
+  [{::keys [raw-table]}]
+  {::pco/output [:start-date
+                 :ended-date]}
+  (let [sorted-dates (-> raw-table
+                         :Date
+                         vec
+                         sort)]
+    {:start-date (first sorted-dates)
+     :ended-date (last sorted-dates)}))
+#_
+(pathmore/check :ended-date)
+
 (pco/defresolver $extract-table-columns
   "Extract the columsn from the table.
 Note that unfortunately they can't be treated as collections directly b/c of bug
@@ -164,6 +188,10 @@ So they need to coerced to `vec`"
                               vec))})
 #_
 (pathmore/check [{::data [:Days-from-start]}]
+                 {::crazy-dates #{#time/date "2017-07-30"}})
+
+#_
+(pathmore/check [{::data [:Days-from-start]}]
                 {:start-date   #time/date "2011-01-01"
                  ::crazy-dates #{#time/date "2017-07-30"}})
 
@@ -175,6 +203,10 @@ So they need to coerced to `vec`"
   {::table-classified (tech.v3.dataset.join/left-join :Date
                                                       index-table
                                                       airport-table)})
+#_
+(pathmore/check ::table-classified
+                {::crazy-dates #{#time/date "2017-07-30"}})
+
 
 (pco/defresolver $extract-table-classified-columns
   "Extract the columsn from the table.
@@ -223,7 +255,8 @@ So they need to coerced to `vec`"
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)
-        kxygk.anemoi.generic/$resolvers$]
+        kxygk.anemoi.generic/$resolvers$
+        kxygk.anemoi.index/$resolvers$]
        flatten
        (mapv pathmore/inject-simple-cache)))
 
