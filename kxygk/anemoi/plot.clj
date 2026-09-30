@@ -1,7 +1,6 @@
 (ns kxygk.anemoi.plot
   (:require [clojure.math]
             [clojure.string]
-            [kxygk.anemoi.stat :as stat]
             [kxygk.anemoi.ghcnd :as ghcnd]
             [kxygk.anemoi.airport :as airport]
             [kxygk.anemoi.index :as index]
@@ -30,6 +29,18 @@
 
 (pathmore/clean-ns!)
 
+(def $state$
+  "for testing only"
+  {::airport/filestr     (str "/home/kxygk/Data/airport/"
+                              "first-sheet-extracted.csv")
+   ::airport/crazy-dates #{#time/date "2017-07-30"}
+   ::index/filestr       (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                              "climate-index.csv") ;; gets `joined` in to the airport table
+   ;; for testing manual override of dates
+   ::index/start-date    #time/date"2011-01-01"
+   ::index/ended-date    #time/date"2031-01-01"})
+
+
 (def summer-color "#aa8800")
 (def winter-color "#00aa88")
 (def secondary-color "#33ff")
@@ -54,6 +65,7 @@
  :dD
  :Comment]
 ;;
+
 (pco/defresolver $aiport-repack-mini
   [{::airport/keys [data]}]
   {::pco/input  [{::airport/data [:Date
@@ -61,14 +73,16 @@
                                   :d18O
                                   :dD
                                   :Comment]}]
-   ::pco/output [{::d18O-rain [{:x [:data-vec]}
-                               {:y [:data-vec]}]}
-                 {::d18O-dD [{:x [:data-vec]}
-                             {:y [:data-vec]}]}]}
-  {::d18O-rain {:x {:data-vec (:d18O data)}
-                :y {:data-vec (:Rain-mm data)}}
-   ::d18O-dD   {:x {:data-vec (:d18O data)}
-                :y {:data-vec (:dD data)}}})
+   ::pco/output [{::d18O-rain [{:x [:data|]}
+                               {:y [:data|]}]}
+                 {::d18O-dD [{:x [:data|]}
+                             {:y [:data|]}]}]}
+  {::d18O-rain {:x (:d18O data)
+                :y (:Rain-mm data)}
+   ::d18O-dD   {:x (:d18O data)
+                :y (:dD data)}})
+#_
+(pathmore/check [{::d18O-rain [:xy|]}])
 
 (pco/defresolver $meteoric-water-line-subplot
   "Amount weighted averages"
@@ -81,7 +95,7 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::d18O-dD [:xy-nonil]}]
+                 {::d18O-dD [:xy-nonil|]}]
    ::pco/output [{::meteoric-water-line-subplot [::hiccup]}]}
   {::meteoric-water-line-subplot {::hiccup (-> (quickthing/primary-axis [[-22.5
                                                                           -150]
@@ -108,7 +122,7 @@
                                                                          :color       "#0008"})
                                                (update :data
                                                        #(into %
-                                                              (quickthing/circles (:xy-nonil d18O-dD)
+                                                              (quickthing/circles (:xy-nonil| d18O-dD)
                                                                                   {:scale   (/ scale
                                                                                                10)
                                                                                    :attribs {:fill "blue"}})))
@@ -130,9 +144,9 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::d18O-rain [:xy-nonil]}]
+                 {::d18O-rain [:xy-nonil|]}]
    ::pco/output [{::amount-effect-subplot [::hiccup]}]}
-  {::amount-effect-subplot {::hiccup (-> (quickthing/primary-axis (:xy-nonil d18O-rain)
+  {::amount-effect-subplot {::hiccup (-> (quickthing/primary-axis (:xy-nonil| d18O-rain)
                                                                   {:width       width
                                                                    :height      height
                                                                    :title       "Amount Effect"
@@ -185,7 +199,7 @@
                                                     :text-anchor "end"})
                                          (update :data
                                                  #(into %
-                                                        (quickthing/circles (:xy-nonil d18O-rain)
+                                                        (quickthing/circles (:xy-nonil| d18O-rain)
                                                                             {:scale   (/ scale
                                                                                          10)
                                                                              :attribs {:fill "blue"}})))
@@ -214,10 +228,10 @@
                                   #_#_
                                   :dD
                                   :Comment]}]
-   ::pco/output [{::day-rain [{:x [:data-vec]}
-                              {:y [:data-vec]}]}
-                 {::day-d18O [{:x [:data-vec]}
-                              {:y [:data-vec]}
+   ::pco/output [{::day-rain [{:x [:data|]}
+                              {:y [:data|]}]}
+                 {::day-d18O [{:x [:data|]}
+                              {:y [:data|]}
                               :meta]}]}
   (println (str "Last Point During Repack: "
                 (last (:Days-from-start data))
@@ -226,21 +240,26 @@
                 " Last Date: "
                 (last (:Date data))
                 ))
-  {::day-rain {:x {:data-vec (:Days-from-start data)}
-               :y {:data-vec (:Rain-mm data)}}
-   ::day-d18O {:x    {:data-vec (:Days-from-start data)}
-               :y    {:data-vec (:d18O data)}
-               :meta (mapv (fn [rain-mm]
-                             {:Rain-mm rain-mm})
-                           (:Rain-mm data))}})
+  {::day-rain {:x (:Days-from-start data)
+               :y (:Rain-mm data)}
+   ::day-d18O {:x (:Days-from-start data)
+               :y (:d18O data)}
+   :meta      (mapv (fn [rain-mm]
+                      {:Rain-mm rain-mm})
+                    (:Rain-mm data))})
+#_
+(pathmore/check [{::day-d18O [:xy|]}])
+#_
+(pathmore/check [{::day-d18O [:hist]}])
+
 
 (pco/defresolver $day-minmax ;; used everywhere.. so just to save typing a bit
   [{::keys [day-rain]}]
-  {::pco/input [{::day-rain [{:x [::stat/max]}]}]}
+  {::pco/input [{::day-rain [{:x [:max]}]}]}
   {::day-num-min 0 ;; Shouldn't use negative days!
    ::day-num-max (-> day-rain
                      :x
-                     ::stat/max)})
+                     :max)})
 
 ;;
 #_
@@ -267,14 +286,14 @@
             day-num-max
             day-rain]}]
   {::pco/input  [::day-num-max
-                 {::day-rain [{:y [::stat/max]}]}]
+                 {::day-rain [{:y [:max]}]}]
    ::pco/output [::rain-axis]}
   {::rain-axis (-> (quickthing/primary-axis [[0 ;; negative days are cut off!
                                               0.0] ;; least amount of rain is zero..
                                              [day-num-max
                                               (-> day-rain
                                                   :y
-                                                  ::stat/max)]]
+                                                  :max)]]
                                             {:width       width
                                              :height      height
                                              :title       "Rain"
@@ -302,20 +321,20 @@
                  ::scale
                  ::margin-frac
                  ;;
-                 {::day-d18O [{:y [::stat/max
-                                   ::stat/min]}]}]
+                 {::day-d18O [{:y [:max
+                                   :min]}]}]
    ::pco/output [::d18O-axis]}
   (println (str "Number of Daus"
                 day-num-max))
   {::d18O-axis (-> (quickthing/secondary-axis [[0  ;; negative days are cut off!
                                                 (-> day-d18O
                                                     :y
-                                                    ::stat/min
+                                                    :min
                                                     (* 1.2))]
                                                [day-num-max
                                                 (-> day-d18O
                                                     :y
-                                                    ::stat/max)]]
+                                                    :max)]]
                                               {:width       width
                                                :height      height
                                                :scale       scale
@@ -392,14 +411,14 @@
   {::pco/input  [::width
                  ::day-num-max
                  ::rain-axis
-                 {::day-rain [:xy-nonil]}]
+                 {::day-rain [:xy-nonil|]}]
    ::pco/output [::rain-layer]}
   (println (str "Peek points building plot: "
-                (last (:xy-nonil day-rain))))
+                (last (:xy-nonil| day-rain))))
   {::rain-layer (-> rain-axis
                     (update :data
                             #(into %
-                                   (quickthing/bars (:xy-nonil day-rain)
+                                   (quickthing/bars (:xy-nonil| day-rain)
                                                     {:attribs {:stroke-width (/ width
                                                                                 day-num-max)
                                                                :stroke       "#000000"}})))
@@ -421,7 +440,7 @@
   {::pco/input  [::width
                  ::scale
                  ::d18O-axis
-                 {::day-d18O [:xy-nonil]}]
+                 {::day-d18O [:xy-nonil|]}]
    ::pco/output [::d18O-layer]}
   {::d18O-layer (-> d18O-axis
                     (update :data
@@ -443,7 +462,7 @@
                                                                                            20)
                                                                           :stroke       "grey"}))])
                                                              (-> day-d18O
-                                                                 :xy-nonil))
+                                                                 :xy-nonil|))
                                                        {:scale   10
                                                         :attribs {:fill secondary-color}})))
                     viz/svg-plot2d-cartesian)})
@@ -481,14 +500,14 @@
                                 :Days-from-start
                                 :Above-Index
                                 :Below-Index]}]
-   ::pco/output [{::day-above [{:x [:data-vec]}
-                               {:y [:data-vec]}]}
-                 {::day-below [{:x [:data-vec]}
-                               {:y [:data-vec]}]}]}
-  {::day-above {:x {:data-vec (:Days-from-start data)}
-                :y {:data-vec (:Above-Index data)}}
-   ::day-below {:x {:data-vec (:Days-from-start data)}
-                :y {:data-vec (:Below-Index data)}}})
+   ::pco/output [{::day-above [{:x [:data|]}
+                               {:y [:data|]}]}
+                 {::day-below [{:x [:data|]}
+                               {:y [:data|]}]}]}
+  {::day-above {:x (:Days-from-start data)
+                :y (:Above-Index data)}
+   ::day-below {:x (:Days-from-start data)
+                :y (:Below-Index data)}})
 
 
 
@@ -503,11 +522,11 @@
                                              :Above-Index
                                              :Below-Index
                                              :Above?]}]
-   ::pco/output [{::day-d18O-classified [:xy-all]}
-                 {::day-d18O-above [:xy-all]}
-                 {::day-d18O-below [:xy-all]}
-                 {::d18O-rain-above [:xy-all]}
-                 {::d18O-rain-below [:xy-all]} ]}
+   ::pco/output [{::day-d18O-classified [:xy|]}
+                 {::day-d18O-above [:xy|]}
+                 {::day-d18O-below [:xy|]}
+                 {::d18O-rain-above [:xy|]}
+                 {::d18O-rain-below [:xy|]} ]}
   (let [collated-daily        (mapv (fn [day
                                          O18
                                          rain-mm
@@ -516,19 +535,19 @@
                                        O18
                                        {:Rain-mm   rain-mm
                                         :AboveFlag above-flag}])
-                                    (:Days-from-start data-classified)
-                                    (:d18O data-classified)
-                                    (:Rain-mm data-classified)
-                                    (:Above? data-classified))
+                                    (:data| (:Days-from-start data-classified))
+                                    (:data| (:d18O data-classified))
+                                    (:data| (:Rain-mm data-classified))
+                                    (:data| (:Above? data-classified)))
         for-weighted-averages (mapv (fn [O18
                                          rain-mm
                                          above-flag]
                                       [O18
                                        rain-mm
                                        {:AboveFlag above-flag}])
-                                    (:d18O data-classified)
-                                    (:Rain-mm data-classified)
-                                    (:Above? data-classified))]
+                                    (:data| (:d18O data-classified))
+                                    (:data| (:Rain-mm data-classified))
+                                    (:data| (:Above? data-classified)))]
     (let [grouped-daily    (group-by (fn [entry]
                                        (-> entry
                                            (nth 2)
@@ -539,15 +558,17 @@
                                            (nth 2)
                                            :AboveFlag))
                                      for-weighted-averages)]
-      {::day-d18O-classified {:xy-all collated-daily}
-       ::day-d18O-above      {:xy-all (get grouped-daily
-                                           true)}
-       ::day-d18O-below      {:xy-all (get grouped-daily
-                                           false)}
-       ::d18O-rain-above     {:xy-all (get grouped-averages
-                                           true)}
-       ::d18O-rain-below     {:xy-all (get grouped-averages
-                                           false)}})))
+      {::day-d18O-classified {:xy| collated-daily}
+       ::day-d18O-above      {:xy| (get grouped-daily
+                                        true)}
+       ::day-d18O-below      {:xy| (get grouped-daily
+                                        false)}
+       ::d18O-rain-above     {:xy| (get grouped-averages
+                                        true)}
+       ::d18O-rain-below     {:xy| (get grouped-averages
+                                        false)}})))
+#_
+(pathmore/check ::d18O-rain-above)
 
 (pco/defresolver $d18O-classified-layer ;; reuse resolver
   [{::keys [day-d18O-above
@@ -555,8 +576,8 @@
             scale
             width
             d18O-axis]}]
-  {::pco/input  [{::day-d18O-above [:xy-nonil]}
-                 {::day-d18O-below [:xy-nonil]}
+  {::pco/input  [{::day-d18O-above [:xy-nonil|]}
+                 {::day-d18O-below [:xy-nonil|]}
                  ::scale
                  ::width
                  ::d18O-axis] ;;
@@ -583,7 +604,7 @@
                                                                                          :stroke       "grey"})
                                                                                  (dissoc :Above?)))])
                                                                         (-> day-d18O-above
-                                                                            :xy-nonil))
+                                                                            :xy-nonil|))
                                                                   {:scale   10
                                                                    :attribs {:fill summer-color}})))
                                (update :data
@@ -607,7 +628,7 @@
                                                                                                             20)
                                                                                            :stroke       "grey"})
                                                                                    (dissoc :Above?)))]))
-                                                                        (:xy-nonil day-d18O-below))
+                                                                        (:xy-nonil| day-d18O-below))
                                                                   {:scale   10
                                                                    :attribs {:fill winter-color}})))
                                viz/svg-plot2d-cartesian)})
@@ -621,11 +642,11 @@
             d18O-rain-above
             d18O-rain-below
             width]}]
-  {::pco/input  [{::day-d18O [{:x [::stat/max] }]}
-                 {::d18O-rain [{:x [::stat/max]}
-                               ::stat/weighted-mean]}
-                 {::d18O-rain-above [::stat/weighted-mean]}
-                 {::d18O-rain-below [::stat/weighted-mean]}
+  {::pco/input  [{::day-d18O [{:x [:max] }]}
+                 {::d18O-rain [{:x [:max]}
+                               :weighted-mean]}
+                 {::d18O-rain-above [:weighted-mean]}
+                 {::d18O-rain-below [:weighted-mean]}
                  ::scale
                  ::width
                  ::d18O-axis]
@@ -634,22 +655,13 @@
                  ::d18O-below-average-layer]}
   (let [day-num-max     (-> day-d18O
                             :x
-                            ::stat/max)
+                            :max)
         d18O-total-mean (-> d18O-rain ;; could be done earlier in a separate resolver
-                            ::stat/weighted-mean
-                            #_#_
-                            :y
-                            ::stat/standard-mean)
+                            :weighted-mean)
         d18O-above-mean (-> d18O-rain-above
-                            ::stat/weighted-mean
-                            #_#_
-                            :x
-                            ::stat/standard-mean)
+                            :weighted-mean)
         d18O-below-mean (-> d18O-rain-below
-                            ::stat/weighted-mean
-                            #_#_
-                            :x
-                            ::stat/standard-mean)
+                            :weighted-mean)
         ]
     (let [static-font-size       (* 0.008
                                     day-num-max)
@@ -678,7 +690,7 @@
                                                                              day-num-max)
                                                                           (-> d18O-rain
                                                                               :x
-                                                                              ::stat/max
+                                                                              :max
                                                                               (* 1.1))
                                                                           {:text              (str "WEIGHTED AVERAGE d18O: "
                                                                                                    (format "%.2f" d18O-total-mean))
@@ -702,7 +714,7 @@
                                                                              day-num-max)
                                                                           (-> d18O-rain
                                                                               :x
-                                                                              ::stat/max
+                                                                              :max
                                                                               (* 1.1))
                                                                           {:text              (str "SUMMER MONSOON d18O: "
                                                                                                    (format "%.2f" d18O-above-mean))
@@ -725,7 +737,7 @@
                                                                              day-num-max)
                                                                           (-> d18O-rain
                                                                               :x
-                                                                              ::stat/max
+                                                                              :max
                                                                               (* 1.1))
                                                                           {:text              (str "WINTER MONSOON d18O: "
                                                                                                    (format "%.2f" d18O-below-mean))
@@ -798,20 +810,20 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::day-above [{:x [::stat/max]}
-                               {:y [::stat/max]}]}
-                 {::day-below [#_{:x [::stat/max]} ;; should be the same
-                               {:y [::stat/max]}]}]
+                 {::day-above [{:x [:max]}
+                               {:y [:max]}]}
+                 {::day-below [#_{:x [:max]} ;; should be the same
+                               {:y [:max]}]}]
    ::pco/output [::index-axis]}
   {::index-axis (-> (quickthing/primary-axis [[0
                                                0.0] ;; index min is always zero
                                               [day-num-max
                                                (max (-> day-above
                                                         :y
-                                                        ::stat/max)
+                                                        :max)
                                                     (-> day-below
                                                         :y
-                                                        ::stat/max))]]
+                                                        :max))]]
                                              {:width       width
                                               :height      height
                                               :title       "Monsoon"
@@ -843,8 +855,8 @@
             index-axis
             day-num-min
             day-num-max]}]
-  {::pco/input  [{::day-above [:xy-nonil]}
-                 {::day-below [:xy-nonil]}
+  {::pco/input  [{::day-above [:xy-nonil|]}
+                 {::day-below [:xy-nonil|]}
                  ::width ;; needs default??
                  ::index-axis
                  ::day-num-min
@@ -853,14 +865,14 @@
   {::index-layer (-> index-axis
                      (update :data
                              #(into %
-                                    (quickthing/bars (:xy-nonil day-below)
+                                    (quickthing/bars (:xy-nonil| day-below)
                                                      {:attribs {:stroke-width (/ width
                                                                                  (- day-num-max
                                                                                     day-num-min))
                                                                 :stroke       winter-color}})))
                      (update :data
                              #(into %
-                                    (quickthing/bars (:xy-nonil day-above)
+                                    (quickthing/bars (:xy-nonil| day-above)
                                                      {:attribs {:stroke-width (/ width
                                                                                  (- day-num-max
                                                                                     day-num-min))
@@ -928,28 +940,28 @@
   {::pco/input  [::width
                  ::height
                  ::scale
-                 {::d18O-rain [{::stat/hist [:xy-nonil
-                                             {:y [::stat/max]}]}
-                               {:x [::stat/min
-                                    ::stat/max]}]}
-                 {::d18O-rain-above [{::stat/hist [:xy-nonil]}
-                                     {:x [::stat/max]}]}
-                 {::d18O-rain-below [{::stat/hist [:xy-nonil]}
-                                     {:x [::stat/max]}]}]
+                 {::d18O-rain [{:hist [:xy-nonil|
+                                       {:y [:max]}]}
+                               {:x [:min
+                                    :max]}]}
+                 {::d18O-rain-above [{:hist [:xy-nonil|]}
+                                     {:x [:max]}]}
+                 {::d18O-rain-below [{:hist [:xy-nonil|]}
+                                     {:x [:max]}]}]
    ::pco/output [{::hist-rain-classified-subplot [::hiccup]}]}
   (let [d18O-range-min (-> d18O-rain
                            :x
-                           ::stat/min)
+                           :min)
         d18O-range-max (-> d18O-rain
                            :x
-                           ::stat/max)]
+                           :max)]
     {::hist-rain-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                              0.0]
                                                                             [d18O-range-max
                                                                              (-> d18O-rain
-                                                                                 ::stat/hist
+                                                                                 :hist
                                                                                  :y
-                                                                                 ::stat/max)]]
+                                                                                 :max)]]
                                                                            {:width       width
                                                                             :height      height
                                                                             :title       ""
@@ -972,8 +984,8 @@
                                                   (update :data
                                                           #(into %
                                                                  (quickthing/bars (->> d18O-rain-above
-                                                                                       ::stat/hist
-                                                                                       :xy-nonil
+                                                                                       :hist
+                                                                                       :xy-nonil|
                                                                                        (mapv (fn [[x-coord
                                                                                                    y-coord]]
                                                                                                [(- x-coord
@@ -987,8 +999,8 @@
                                                   (update :data
                                                           #(into %
                                                                  (quickthing/bars (->> d18O-rain-below
-                                                                                       ::stat/hist
-                                                                                       :xy-nonil
+                                                                                       :hist
+                                                                                       :xy-nonil|
                                                                                        (mapv (fn [[x-coord
                                                                                                    y-coord]]
                                                                                                [(+ x-coord
@@ -1026,11 +1038,11 @@
                                  :Rain-d18O
                                  :Vapor-d18O
                                  :Rain-mm]}]
-   ::pco/output [{::day-isogsm-rain-d18O [{:x [:data-vec]}
-                                          {:y [:data-vec]}
+   ::pco/output [{::day-isogsm-rain-d18O [{:x [:data|]}
+                                          {:y [:data|]}
                                           :meta]}
-                 {::day-isogsm-vapor-d18O [{:x [:data-vec]}
-                                           {:y [:data-vec]}]}]}
+                 {::day-isogsm-vapor-d18O [{:x [:data|]}
+                                           {:y [:data|]}]}]}
   #_
   (println (str "Last Point During Repack: "
                 (last (:Days-from-start data))
@@ -1040,13 +1052,17 @@
                 (last (:Date data))
                 
                 ))
-  {::day-isogsm-rain-d18O  {:x    {:data-vec (:Days-from-start data)}
-                            :y    {:data-vec (:Rain-d18O data)}
-                            :meta (mapv (fn [rain-mm]
-                                          {:Rain-mm rain-mm})
-                                        (:Rain-mm data))}
-   ::day-isogsm-vapor-d18O {:x {:data-vec (:Days-from-start data)}
-                            :y {:data-vec (:Vapor-d18O data)}}})
+  {::day-isogsm-rain-d18O  {:x    (:Days-from-start data)
+                            :y    (:Rain-d18O data)
+                            :meta (->> data
+                                       :Rain-mm
+                                       :data|
+                                       (mapv (fn [rain-mm]
+                                               {:Rain-mm rain-mm})))}
+   ::day-isogsm-vapor-d18O {:x (:Days-from-start data)
+                            :y (:Vapor-d18O data)}})
+#_
+(pathmore/check ::day-isogsm-rain-d18O)
 
 (pco/defresolver $isogsm-rain-d18O-layer
   [{::keys [width
@@ -1056,7 +1072,7 @@
   {::pco/input  [::width
                  ::scale
                  ::d18O-axis
-                 {::day-isogsm-rain-d18O [:xy-nonil]}]
+                 {::day-isogsm-rain-d18O [:xy-nonil|]}]
    ::pco/output [::isogsm-rain-d18O-layer]}
   {::isogsm-rain-d18O-layer (-> d18O-axis
                                 (update :data
@@ -1078,7 +1094,7 @@
                                                                                                        20)
                                                                                       :stroke       "grey"}))])
                                                                          (-> day-isogsm-rain-d18O
-                                                                             :xy-nonil))
+                                                                             :xy-nonil|))
                                                                    {:scale   10
                                                                     :attribs {:fill "red"}})))
                                 viz/svg-plot2d-cartesian)})
@@ -1091,13 +1107,13 @@
   {::pco/input  [::width
                  ::scale
                  ::d18O-axis
-                 {::day-isogsm-vapor-d18O [:xy-nonil]}]
+                 {::day-isogsm-vapor-d18O [:xy-nonil|]}]
    ::pco/output [::isogsm-vapor-d18O-layer]}
   {::isogsm-vapor-d18O-layer (-> d18O-axis
                                  (update :data
                                          #(into %
                                                 (quickthing/solid-line (-> day-isogsm-vapor-d18O
-                                                                           :xy-nonil)
+                                                                           :xy-nonil|)
                                                                        {:scale   5
                                                                         :attribs {:stroke "green"}})))
                                  viz/svg-plot2d-cartesian)})
@@ -1159,7 +1175,7 @@
 
 (pco/defresolver $nakhon-rain-layer
   "Rains in Nakhon"
-  [{:keys [nakhon-gauge]
+  [{:keys  [nakhon-gauge]
     ::keys [width
             height
             scale
@@ -1168,12 +1184,12 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {:nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil
-                                                        :y]}]}]
+                 {:nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil|
+                                                      {:y [:data|]}]}]}]
    ::pco/output [{::nakhon-modern-rain-layer [::hiccup]}]}
   (let [rain-xy (-> nakhon-gauge
                     ::ghcnd/daily-rain
-                    :xy-nonil)]
+                    :xy-nonil|)]
     {::nakhon-modern-rain-layer {::hiccup (-> (quickthing/primary-axis rain-xy
                                                                        {:width       width
                                                                         :height      height
@@ -1223,19 +1239,12 @@
 
 
 
-(def $resolvers$
-  (->> (pathmore/find-resolvers)
-       (mapv pathmore/inject-simple-cache)))
-
-(def $env$
-  (pci/register {::p.a.eql/parallel? true}
-                $resolvers$))
-
 #_
 ((ds/filter-column glued
                    "ENSO"
                    #(pos? %)))
 
+#_
 (pco/defresolver $d18O-below-select-layer
   [{::keys [width
             scale
@@ -1244,28 +1253,28 @@
             d18O-other-data]}]
   {::pco/input  [::width
                  ::d18O-axis
-                 {::d18O-extremes-data [:xy-nonil]}
-                 {::d18O-other-data [:xy-nonil]}] ;;
+                 {::d18O-extremes-data [:xy-nonil|]}
+                 {::d18O-other-data [:xy-nonil|]}] ;;
    ::pco/output [::d18O-below-select-layer]}
   {::d18O-below-select-layer (let [last-day                 (apply max ;; find last day
                                                                    (into (mapv first
-                                                                               (:xy-nonil d18O-extremes-data))
+                                                                               (:xy-nonil| d18O-extremes-data))
                                                                          (mapv first
-                                                                               (:xy-nonil d18O-other-data))))
+                                                                               (:xy-nonil| d18O-other-data))))
                                    max-val                  (apply max
                                                                    (into (mapv second
-                                                                               (:xy-nonil d18O-extremes-data))
+                                                                               (:xy-nonil| d18O-extremes-data))
                                                                          (mapv second
-                                                                               (:xy-nonil d18O-other-data))))
+                                                                               (:xy-nonil| d18O-other-data))))
                                    ;; EXTREME
                                    extreme-volume           (->> d18O-extremes-data
-                                                                 :xy-nonil
+                                                                 :xy-nonil|
                                                                  (mapv last)
                                                                  (mapv :Rain-mm)
                                                                  (filterv some?)
                                                                  (apply +))
                                    extreme-weighted-average (/ (->> d18O-extremes-data
-                                                                    :xy-nonil
+                                                                    :xy-nonil|
                                                                     (mapv (fn [[_
                                                                                 d18O
                                                                                 {:keys [Rain-mm]}]]
@@ -1277,13 +1286,13 @@
                                                                extreme-volume)
                                    ;; OTHER
                                    other-volume             (->> d18O-other-data
-                                                                 :xy-nonil
+                                                                 :xy-nonil|
                                                                  (mapv last)
                                                                  (mapv :Rain-mm)
                                                                  (filterv some?)
                                                                  (apply +))
                                    other-weighted-average   (/ (->> d18O-other-data
-                                                                    :xy-nonil
+                                                                    :xy-nonil|
                                                                     (mapv (fn [[_
                                                                                 d18O
                                                                                 {:keys [Rain-mm]}]]
@@ -1305,7 +1314,7 @@
                                              :stroke nil}]])
                                    (update :data
                                            #(into %
-                                                  (quickthing/circles (:xy-nonil d18O-extremes-data)
+                                                  (quickthing/circles (:xy-nonil| d18O-extremes-data)
                                                                       {:scale   (/ scale
                                                                                    4.0)
                                                                        :attribs {:stroke       "red"
@@ -1382,8 +1391,15 @@
                                                                         :dominant-baseline "hanging"}]])))
                                    viz/svg-plot2d-cartesian))})
 
+(def $resolvers$
+  (->> (pathmore/find-resolvers)
+       (mapv pathmore/inject-simple-cache)))
 
-
+(def $env$
+  (pci/register {::p.a.eql/parallel? true}
+                [$resolvers$
+                 kxygk.mathom.core/$resolvers$
+                 airport/$resolvers$]))
 
 (pco/defresolver $index-d18O-big-events-subplot
   [{::keys [width
@@ -1444,18 +1460,18 @@
                  ::scale
                  ::d18O-range-min
                  ::d18O-range-max
-                 {::d18O-rain [{:x [{::stat/hist [:xy-nonil
-                                                  {:y [::stat/max]}]}
-                                    ::stat/max]}]}]
+                 {::d18O-rain [{:x [{:hist [:xy-nonil|
+                                            {:y [:max]}]}
+                                    :max]}]}]
    ::pco/output [{::hist-count-all-subplot [::hiccup]}]}
   {::hist-count-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                      0.0]
                                                                     [d18O-range-max
                                                                      (-> d18O-rain
                                                                          :x
-                                                                         ::stat/hist
+                                                                         :hist
                                                                          :y
-                                                                         ::stat/max)]]
+                                                                         :max)]]
                                                                    {:width       width
                                                                     :height      height
                                                                     :title       ""
@@ -1480,8 +1496,8 @@
                                                   #(into %
                                                          (quickthing/bars (->> d18O-rain
                                                                                :x
-                                                                               ::stat/hist
-                                                                               :xy-nonil)
+                                                                               :hist
+                                                                               :xy-nonil|)
                                                                           {:attribs {:stroke-width (/ width
                                                                                                       (* 3.0
                                                                                                          (- d18O-range-max
@@ -1508,22 +1524,22 @@
                  ::scale
                  ::d18O-range-min
                  ::d18O-range-max
-                 {::d18O-rain [{:x [{::stat/hist [:xy-nonil
-                                                  {:y [::stat/max]}]}
-                                    ::stat/max]}]}
-                 {::d18O-rain-above [{:x [{::stat/hist [:xy-nonil]}
-                                          ::stat/max]}]}
-                 {::d18O-rain-below [{:x [{::stat/hist [:xy-nonil]}
-                                          ::stat/max]}]}]
+                 {::d18O-rain [{:x [{:hist [:xy-nonil|
+                                            {:y [:max]}]}
+                                    :max]}]}
+                 {::d18O-rain-above [{:x [{:hist [:xy-nonil|]}
+                                          :max]}]}
+                 {::d18O-rain-below [{:x [{:hist [:xy-nonil|]}
+                                          :max]}]}]
    ::pco/output [{::hist-count-classified-subplot [::hiccup]}]}
   {::hist-count-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                             0.0]
                                                                            [d18O-range-max
                                                                             (-> d18O-rain
                                                                                 :x
-                                                                                ::stat/hist
+                                                                                :hist
                                                                                 :y
-                                                                                ::stat/max)]]
+                                                                                :max)]]
                                                                           {:width       width
                                                                            :height      height
                                                                            :title       ""
@@ -1547,8 +1563,8 @@
                                                          #(into %
                                                                 (quickthing/bars (->> d18O-rain-above
                                                                                       :x
-                                                                                      ::stat/hist
-                                                                                      :xy-nonil
+                                                                                      :hist
+                                                                                      :xy-nonil|
                                                                                       (mapv (fn [[x-coord
                                                                                                   y-coord]]
                                                                                               [(- x-coord
@@ -1563,8 +1579,8 @@
                                                          #(into %
                                                                 (quickthing/bars (->> d18O-rain-below
                                                                                       :x
-                                                                                      ::stat/hist
-                                                                                      :xy-nonil
+                                                                                      :hist
+                                                                                      :xy-nonil|
                                                                                       (mapv (fn [[x-coord
                                                                                                   y-coord]]
                                                                                               [(+ x-coord
@@ -1615,17 +1631,17 @@
                  ::scale
                  ::d18O-range-min
                  ::d18O-range-max
-                 {::d18O-rain [{::stat/hist [:xy-nonil
-                                             {:y [::stat/max]}]}
-                               {:x [::stat/max]}]}]
+                 {::d18O-rain [{:hist [:xy-nonil|
+                                       {:y [:max]}]}
+                               {:x [:max]}]}]
    ::pco/output [{::hist-rain-all-subplot [::hiccup]}]}
   {::hist-rain-all-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                     0.0]
                                                                    [d18O-range-max
                                                                     (-> d18O-rain
-                                                                        ::stat/hist
+                                                                        :hist
                                                                         :y
-                                                                        ::stat/max)]]
+                                                                        :max)]]
                                                                   {:width       width
                                                                    :height      height
                                                                    :title       ""
@@ -1649,8 +1665,8 @@
                                          (update :data
                                                  #(into %
                                                         (quickthing/bars (->> d18O-rain
-                                                                              ::stat/hist
-                                                                              :xy-nonil)
+                                                                              :hist
+                                                                              :xy-nonil|)
                                                                          {:attribs {:stroke-width (/ width
                                                                                                      (* 3.0
                                                                                                         (- d18O-range-max
@@ -1679,24 +1695,24 @@
                  ::scale
                  ::d18O-range-min
                  ::d18O-range-max
-                 {::d18O-monsoon-above [{::stat/hist [:xy-nonil
-                                                      {:y [::stat/max]}]}
-                                        {:x [::stat/max]}]}
-                 {::d18O-monsoon-below [{::stat/hist [:xy-nonil
-                                                      {:y [::stat/max]}]}
-                                        {:x [::stat/max]}]}]
+                 {::d18O-monsoon-above [{:hist [:xy-nonil|
+                                                {:y [:max]}]}
+                                        {:x [:max]}]}
+                 {::d18O-monsoon-below [{:hist [:xy-nonil|
+                                                {:y [:max]}]}
+                                        {:x [:max]}]}]
    ::pco/output [{::hist-monsoon-classified-subplot [::hiccup]}]}
   {::hist-monsoon-classified-subplot {::hiccup (-> (quickthing/primary-axis [[d18O-range-min
                                                                               0.0]
                                                                              [d18O-range-max
                                                                               (max (-> d18O-monsoon-above
-                                                                                       ::stat/hist
+                                                                                       :hist
                                                                                        :y
-                                                                                       ::stat/max)
+                                                                                       :max)
                                                                                    (-> d18O-monsoon-below
-                                                                                       ::stat/hist
+                                                                                       :hist
                                                                                        :y
-                                                                                       ::stat/max))]]
+                                                                                       :max))]]
                                                                             {:width       width
                                                                              :height      height
                                                                              :title       ""
@@ -1719,8 +1735,8 @@
                                                    (update :data
                                                            #(into %
                                                                   (quickthing/bars (->> d18O-monsoon-above
-                                                                                        ::stat/hist
-                                                                                        :xy-nonil
+                                                                                        :hist
+                                                                                        :xy-nonil|
                                                                                         (mapv (fn [[x-coord
                                                                                                     y-coord]]
                                                                                                 [(- x-coord
@@ -1734,8 +1750,8 @@
                                                    (update :data
                                                            #(into %
                                                                   (quickthing/bars (->> d18O-monsoon-below
-                                                                                        ::stat/hist
-                                                                                        :xy-nonil
+                                                                                        :hist
+                                                                                        :xy-nonil|
                                                                                         (mapv (fn [[x-coord
                                                                                                     y-coord]]
                                                                                                 [(+ x-coord
@@ -2069,7 +2085,7 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil
+                 {::nakhon-gauge [{::ghcnd/daily-rain [:xy-nonil|
                                                        :y]}]}]
    ::pco/output [{::nakhon-rain-layer [::hiccup]}]}
   {::nakhon-rain-layer {::hiccup (-> (quickthing/primary-axis [[0.0
@@ -2079,9 +2095,9 @@
                                                                               :days)
                                                                 (apply max
                                                                        (filterv some?
-                                                                                (:data-vec (-> nakhon-gauge
-                                                                                               ::ghcnd/daily-rain
-                                                                                               :y))))]]
+                                                                                (:data| (-> nakhon-gauge
+                                                                                            ::ghcnd/daily-rain
+                                                                                            :y))))]]
                                                               {:width       width
                                                                :height      height
                                                                :x-name      "Year"
@@ -2103,19 +2119,19 @@
                                              #(into %
                                                     (quickthing/bars (-> nakhon-gauge
                                                                          ::ghcnd/daily-rain
-                                                                         :xy-nonil)
+                                                                         :xy-nonil|)
                                                                      {:attribs {:stroke       "black"
                                                                                 :stroke-width (/ width
                                                                                                  (count (-> nakhon-gauge
                                                                                                             ::ghcnd/daily-rain
                                                                                                             :y
-                                                                                                            :data-vec)))}})))
+                                                                                                            :data|)))}})))
                                      #_
                                      (update :data
                                              #(into %
                                                     (quickthing/circles (-> nakhon-gauge
                                                                             ::ghcnd/daily-rain
-                                                                            :xy-nonil)
+                                                                            :xy-nonil|)
                                                                         {:stroke-width 0.0 #_ "none"
                                                                          :scale        (/ scale
                                                                                           10)}
@@ -2125,7 +2141,7 @@
                                                                                                     (count (-> nakhon-gauge
                                                                                                                ::ghcnd/daily-rain
                                                                                                                :y
-                                                                                                               :data-vec)))}})))
+                                                                                                               :data|)))}})))
                                      viz/svg-plot2d-cartesian
                                      (quickthing/svg-wrap [width
                                                            height]
@@ -2143,11 +2159,11 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/annual-storm-fraction [:xy-nonil]}]}]
+                 {::nakhon-gauge [{::ghcnd/annual-storm-fraction [:xy-nonil|]}]}]
    ::pco/output [{::nakhon-big-rain-fraction-layer [::hiccup]}]}
   (let [fraction-xy (-> nakhon-gauge
                         ::ghcnd/annual-storm-fraction
-                        :xy-nonil)]
+                        :xy-nonil|)]
     (println (str "IN: "
                   "$nakhon-big-rain-fraction-layer "
                   "Fractions: "
@@ -2226,11 +2242,11 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/winter-storm-count [:xy-nonil]}]}]
+                 {::nakhon-gauge [{::ghcnd/winter-storm-count [:xy-nonil|]}]}]
    ::pco/output [{::nakhon-big-rain-count-layer [::hiccup]}]}
   (let [count-xy (-> nakhon-gauge
                      ::ghcnd/winter-storm-count
-                     :xy-nonil)]
+                     :xy-nonil|)]
     {::nakhon-big-rain-count-layer
      {::hiccup (-> (quickthing/primary-axis [[1951.0
                                               0]
@@ -2366,16 +2382,16 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy-all]}
-                                  {::ghcnd/winter-storm-rain [:xy-all]}]}
-                 {::phuket-gauge [{::ghcnd/annual-rain [:xy-all]}]}]
+                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy|]}
+                                  {::ghcnd/winter-storm-rain [:xy|]}]}
+                 {::phuket-gauge [{::ghcnd/annual-rain [:xy|]}]}]
    ::pco/output [{::phuket-nakhon-annual-rain-layer [::hiccup]}]}
   (let [phuket-rain-xy (-> phuket-gauge
                            ::ghcnd/annual-rain
-                           :xy-all)
+                           :xy|)
         nakhon-rain-xy (-> nakhon-gauge
                            ::ghcnd/winter-storm-rain
-                           :xy-all)]
+                           :xy|)]
     {::phuket-nakhon-annual-rain-layer
      {::hiccup (-> (quickthing/primary-axis (into nakhon-rain-xy
                                                   phuket-rain-xy)
@@ -2479,21 +2495,21 @@
                  ::height
                  ::scale
                  ::margin-frac
-                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy-all]}
-                                  {::ghcnd/winter-storm-rain [:xy-all]}]}
-                 {::phuket-gauge [{::ghcnd/annual-rain [:xy-all]}]}
+                 {::nakhon-gauge [{::ghcnd/annual-rain [:xy|]}
+                                  {::ghcnd/winter-storm-rain [:xy|]}]}
+                 {::phuket-gauge [{::ghcnd/annual-rain [:xy|]}]}
                  #_#_#_#_
-                 {::nakhon-winter-rain-totals [:xy-nonil]}
-                 {::nakhon-annual-rain-totals [:xy-nonil]}
-                 {::phuket-annual-rain-totals [:xy-nonil]}
-                 {::big-rain-fraction [:xy-nonil]}]
+                 {::nakhon-winter-rain-totals [:xy-nonil|]}
+                 {::nakhon-annual-rain-totals [:xy-nonil|]}
+                 {::phuket-annual-rain-totals [:xy-nonil|]}
+                 {::big-rain-fraction [:xy-nonil|]}]
    ::pco/output [{::phuket-nakhon-annual-fraction-layer [::hiccup]}]}
   (let [phuket-rain-xy  (-> phuket-gauge
                             ::ghcnd/annual-rain
-                            :xy-all)
+                            :xy|)
         nakhon-rain-xy  (-> nakhon-gauge
                             ::ghcnd/winter-storm-rain
-                            :xy-all)
+                            :xy|)
         winter-fraction (mapv (fn [[year
                                     phuket-rain]
                                    [_

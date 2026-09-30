@@ -5,6 +5,7 @@
          ;;
          kxygk/pathmore                           {:local/root "../pathmore"}
          kxygk/pathomfx                           {:local/root "../pathomfx"}
+         kxygk/mathom                             {:local/root "../mathom"}
          ;;
          kxygk/tock                               {:local/root "../tock"}
          kxygk/quickthing                         {:local/root "../quickthing"}

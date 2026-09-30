@@ -1,7 +1,5 @@
 (ns kxygk.anemoi.nakhon
-  (:require [kxygk.anemoi.stat :as stat]
-            ;;[kxygk.dripsplit.central :as central]
-            [clojure.math]
+  (:require [clojure.math]
             [clojure.string]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.connect.indexes :as pci]

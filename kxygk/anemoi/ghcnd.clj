@@ -7,9 +7,7 @@
    ::tmd/table _]
   Which can be unpacked by the `tmd` namespace
   "
-  (:require kxygk.anemoi.generic
-            [kxygk.anemoi.stat :as stat]
-            [kxygk.anemoi.tmd  :as tmd]
+  (:require kxygk.mathom.core
             [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.util :as util]
             ;;[kxygk.dripsplit.central :as central]
@@ -71,12 +69,12 @@
                       (ds/row-map (fn rain-gauge-reformat
                                     [row-data]
                                     (-> row-data
-                                        (assoc :PRCP
+                                        (assoc :PRCP ;; rescale existing col
                                                (if (nil? (:PRCP row-data))
                                                  nil
                                                  (* (:PRCP row-data)
                                                     0.1)))
-                                        (assoc :fill
+                                        (assoc :fill| ;; new col
                                                (-> row-data
                                                    :DATE
                                                    date2cycle-fraction
@@ -87,8 +85,8 @@
                                           :Lon
                                           :Elevation
                                           :Name
-                                          :PRCP
-                                          :PRCP-attribs
+                                          :Rain-mm ;; was PRCP
+                                          :Rain-mm-attribs ;; was PRCP_ATTRIBUTES
                                           :T-max
                                           :T-max-attribs
                                           :T-min
@@ -139,32 +137,37 @@ So they need to coerced to `vec`"
   [{::keys [table
             start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
   {::pco/output [{::data [:start-date
-                          :Station
-                          :Date
-                          :Lat
-                          :Lon
-                          :Elevation
-                          :Name
-                          :PRCP
-                          :PRCP-attribs
-                          :T-max
-                          :T-max-attribs
-                          :T-min
-                          :T-min-attribs
-                          :T-avg
-                          :T-avg-attribs
-                          :fill]}]}
+                          {:Station [:data|]}
+                          {:Date [:data|]}
+                          {:Lat [:data|]}
+                          {:Lon [:data|]}
+                          {:Elevation [:data|]}
+                          {:Name [:data|]}
+                          {:Rain-mm [:data|]}
+                          {:Rain-mm-attribs [:data|]}
+                          {:T-max [:data|]}
+                          {:T-max-attribs [:data|]}
+                          {:T-min [:data|]}
+                          {:T-min-attribs [:data|]}
+                          {:T-avg [:data|]}
+                          {:T-avg-attribs [:data|]}
+                          {:fill [:data|]}]}]}
   (println (str "GHCND Start Date: "
                 start-date))
   {::data (merge {:start-date start-date}
                  (update-vals (into {}
                                     table)
-                              vec))})
+                              (fn wrap-with-data-key
+                                [given-column]
+                                {:data| (-> given-column
+                                            vec)})))})
 #_
 (pathmore/check [{::data [:Date]}])
 #_
-(let [pack (pathmore/check [{::data [:Days-from-start
-                                     :PRCP]}])]
+(pathmore/check [{::data [:Days-from-start]}])
+#_
+(let [pack (pathmore/check [{::data [:Days-from-start|
+                                     :Rain-mm|]}])]
   (mapv vector
         (-> pack
             :data
@@ -179,120 +182,189 @@ So they need to coerced to `vec`"
 ;;1331.0
 
 (pco/defresolver $daily-rain
-  [{::keys     [data]}]
-  {::pco/input  [{::data [:Days-from-start
-                          :PRCP]}]
-   ::pco/output [{::daily-rain [{:x [:data-vec]}
-                                {:y [:data-vec]}]}]}
-  {::daily-rain {:x {:data-vec (:Days-from-start data)}
-                 :y {:data-vec (:PRCP data)}}})
+  [{::keys [data]}]
+  {::pco/input  [{::data [{:Days-from-start [:data|]}
+                          {:Rain-mm [:data|]}]}]
+   ::pco/output [{::daily-rain [{:x [:data|]}
+                                {:y [:data|]}]}]}
+  {::daily-rain {:x (:Days-from-start data)
+                 :y (:Rain-mm data)}})
 #_
 (pathmore/check ::data)
 #_
 (pathmore/check ::daily-rain)
 #_
-(pathmore/check [{::daily-rain [:xy-nonil]}])
+(pathmore/check [{::daily-rain [:xy-nonil|]}])
+
+;; from `generic` ns
+#_
+(pathmore/check [{::data [:Year|]}])
 
 (pco/defresolver $by-year
-  [{::keys [table]}]
-  {::pco/output [::by-year]}
-  {::by-year (-> table
-                 (ds/add-or-update-column :YEAR
-                                          (->> table
-                                               :DATE
-                                               (mapv tick/year)))
-                 (ds/group-by :YEAR)
-                 set
-                 (update-keys #(-> %
-                                   str
-                                   Integer/parseInt)))})
+  "Ugly thing that works with the original table"
+  [{::keys [table
+            start-date]}]
+  {::pco/output [{::by-year| [::year
+                              ::table
+                              ::start-date]}]}
+  {::by-year| (let [map-of-tables (-> table
+                                      (ds/add-or-update-column :Year
+                                                               (->> table
+                                                                    :Date
+                                                                    (mapv tick/year)))
+                                      (ds/group-by :Year))]
+                (map (fn rebuild-into-vec-of-maps
+                       [[given-year
+                         annual-table]]
+                       {::year       given-year
+                        ::table      annual-table
+                        ::start-date start-date})
+                     map-of-tables))})
+
+;; #_#_
+;;                         (update-keys #(-> %
+;;                                           str
+;;                                           Integer/parseInt))
+;;                         (update-vals #({:table      %
+;;                                         :start-date start-date})))})
 #_
-(pathmore/check ::by-year)
+(-> [{::by-year| [{::data [{:Rain-mm [:sum]}]}]}]
+    pathmore/check)
+
+(tick/int (tick/year #inst"2021-01-01"))
 
 (pco/defresolver $annual-rain
-  [{::keys [by-year]}]
-  {::pco/output [{::annual-rain [:xy-all]}]}
-  {::annual-rain {:xy-all (->> (update-vals by-year
-                                            #(->> %
-                                                  :PRCP
-                                                  (filterv some?)
-                                                  (apply +)))
-                               (mapv identity)
-                               sort)}})
+  [{::keys [by-year|]}]
+  {::pco/input [{::by-year| [::year
+                             {::data [{:Rain-mm [:sum]}]}]}]
+   ::pco/output [{::annual-rain [{:x [:data|]}
+                                 {:y [:data|]}]}]}
+  {::annual-rain {:x {:data| (->> by-year|
+                                  (mapv ::year)
+                                  (mapv tick/int))}
+                  :y {:data| (->> by-year|
+                                  (mapv ::data)
+                                  (mapv :Rain-mm)
+                                  (mapv :sum))}}})
 #_
-(pathmore/check [{::annual-rain [:y]}]) ;; BROKEN, missing :xy-all resolver. Where is it..?
+(pathmore/check [{::annual-rain [:xy|]}]) ;; BROKEN, missing :xy-all resolver. Where is it..?
 
 (pco/defresolver $annual-storm-count
-  [{::keys [by-year
+  [{::keys [by-year|
             storm-threshold-mm]}]
-  {::pco/output [{::annual-storm-count [:xy-all]}]}
-  {::annual-storm-count {:xy-all (->> (update-vals by-year
-                                                   (fn [year-table]
-                                                     (->> year-table
-                                                          :PRCP
-                                                          (filterv some?)
-                                                          (filterv #(> %
-                                                                       storm-threshold-mm))
-                                                          count)))
-                                      (mapv identity)
-                                      sort)}})
+  {::pco/input [::storm-threshold-mm
+                {::by-year| [::year
+                             {::data [{:Rain-mm [:data-nonil|]}]}]}]
+   ::pco/output [{::annual-storm-count [{:x [:data|]}
+                                        {:y [:data|]}]}]}
+  {::annual-storm-count {:x {:data| (->> by-year|
+                                         (mapv ::year)
+                                         (mapv tick/int))}
+                         :y {:data| (->> by-year|
+                                         (mapv ::data)
+                                         (mapv :Rain-mm)
+                                         (mapv (fn chec-for-storms
+                                                   [one-year-Rain-mm]
+                                                   (->> one-year-Rain-mm
+                                                        :data-nonil|
+                                                        (filterv (fn is-rain-storm?
+                                                                   [one-rain]
+                                                                   (> one-rain
+                                                                      storm-threshold-mm)))
+                                                        count))))}}})
 #_
-(pathmore/check [{::annual-storm-count [:xy-all]}]
+(pathmore/check [{::annual-storm-count [:xy|]}]
                 {::storm-threshold-mm 100})
 
 (pco/defresolver $annual-storm-fraction
-  [{::keys [by-year
+  [{::keys [by-year|
             storm-threshold-mm]}]
-  {::pco/output [{::annual-storm-fraction [:xy-all]}]}
-  {::annual-storm-fraction {:xy-all (->> (update-vals by-year
-                                                      (fn [year-table]
-                                                        (let [split-table (->> year-table
-                                                                               :PRCP
-                                                                               (filterv some?)
-                                                                               (group-by #(> %
-                                                                                             storm-threshold-mm)))]
-                                                          (let [big-winter-rains (apply +
-                                                                                        (get split-table
-                                                                                             true))
-                                                                other-rains      (apply +
-                                                                                        (get split-table
-                                                                                             false))]
-                                                            (/ big-winter-rains
-                                                               (+ big-winter-rains
-                                                                  other-rains))))))
-                                         (mapv identity)
-                                         sort)}})
+  {::pco/input [::storm-threshold-mm
+                {::by-year| [::year
+                             {::data [{:Rain-mm [:data-nonil|]}]}]}]
+   ::pco/output [{::annual-storm-fraction [{:x [:data|]}
+                                        {:y [:data|]}]}]}
+  {::annual-storm-fraction {:x {:data| (->> by-year|
+                                         (mapv ::year)
+                                         (mapv tick/int))}
+                         :y {:data| (->> by-year|
+                                         (mapv ::data)
+                                         (mapv :Rain-mm)
+                                         (mapv (fn chec-for-storms
+                                                   [one-year-Rain-mm]
+                                                 (let [total-rains-mm (apply +
+                                                                             (->> one-year-Rain-mm
+                                                                                  :data-nonil|))
+                                                       big-rains-mm (->> one-year-Rain-mm
+                                                                      :data-nonil|
+                                                                      (filterv (fn is-rain-storm?
+                                                                                 [one-rain]
+                                                                                 (> one-rain
+                                                                                    storm-threshold-mm)))
+                                                                      (apply +))]
+                                                   (/ big-rains-mm
+                                                      total-rains-mm)))))}}})
 #_
-(pathmore/check [{::annual-storm-fraction [:xy-all]}]
+(pathmore/check [{::annual-storm-fraction [:xy|]}]
                 {::storm-threshold-mm 100})
 
 (pco/defresolver $annual-storm-rain
-  [{::keys [by-year
+  [{::keys [by-year|
             storm-threshold-mm]}]
-  {::pco/output [{::annual-storm-rain [:xy-all]}]}
-  {::annual-storm-rain {:xy-all (->> (update-vals by-year
-                                                  (fn [year-table]
-                                                    (let [split-table (->> year-table
-                                                                           :PRCP
-                                                                           (filterv some?)
-                                                                           (group-by #(> %
-                                                                                         storm-threshold-mm)))]
-                                                      (let [big-winter-rains (apply +
-                                                                                    (get split-table
-                                                                                         true))
-                                                            #_#_
-                                                            other-rains      (apply +
-                                                                                    (get split-table
-                                                                                         false))]
-                                                        big-winter-rains
-                                                        #_
-                                                        (/ big-winter-rains
-                                                           (+ big-winter-rains
-                                                              other-rains))))))
-                                     (mapv identity)
-                                     sort)}})
+  {::pco/input  [::storm-threshold-mm
+                 {::by-year| [::year
+                              {::data [{:Rain-mm [:data-nonil|]}]}]}]
+   ::pco/output [{::annual-storm-rain [{:x [:data|]}
+                                       {:y [:data|]}]}]}
+  {::annual-total-rain {:x {:data| (->> by-year|
+                                        (mapv ::year)
+                                        (mapv tick/int))}
+                        :y {:data| (->> by-year|
+                                        (mapv ::data)
+                                        (mapv :Rain-mm)
+                                        (mapv (fn chec-for-storms
+                                                [one-year-Rain-mm]
+                                                (let [total-rains-mm (apply +
+                                                                            (->> one-year-Rain-mm
+                                                                                 :data-nonil|))
+                                                      #_#_
+                                                      big-rains-mm   (->> one-year-Rain-mm
+                                                                        :data-nonil|
+                                                                        (filterv (fn is-rain-storm?
+                                                                                   [one-rain]
+                                                                                   (> one-rain
+                                                                                      storm-threshold-mm)))
+                                                                        (apply +))]
+                                                  total-rains-mm
+                                                  #_
+                                                  (/ big-rains-mm
+                                                     total-rains-mm)))))}}
+   ::annual-storm-rain {:x {:data| (->> by-year|
+                                        (mapv ::year)
+                                        (mapv tick/int))}
+                        :y {:data| (->> by-year|
+                                        (mapv ::data)
+                                        (mapv :Rain-mm)
+                                        (mapv (fn chec-for-storms
+                                                [one-year-Rain-mm]
+                                                (let [#_#_
+                                                      total-rains-mm (apply +
+                                                                            (->> one-year-Rain-mm
+                                                                                 :data-nonil|))
+                                                      big-rains-mm   (->> one-year-Rain-mm
+                                                                        :data-nonil|
+                                                                        (filterv (fn is-rain-storm?
+                                                                                   [one-rain]
+                                                                                   (> one-rain
+                                                                                      storm-threshold-mm)))
+                                                                        (apply +))]
+                                                  big-rains-mm
+                                                  #_
+                                                  (/ big-rains-mm
+                                                     total-rains-mm)))))}}})
+
 #_
-(pathmore/check [{::annual-storm-rain [:xy-all]}]
+(pathmore/check [{::annual-storm-rain [:xy|]}]
                 {::storm-threshold-mm 100})
 
 (defn classify-winter
@@ -393,7 +465,7 @@ So they need to coerced to `vec`"
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)
-        kxygk.anemoi.tmd/$resolvers$]
+        kxygk.mathom.core/$resolvers$]
        flatten
        (mapv pathmore/inject-simple-cache)))
 

@@ -55,15 +55,15 @@
                        (take (ds/row-count raw-table))))})#_
 (pathmore/check ::table
                 {::start-date #time/date"2011-01-01"
-                 ::end-date   #time/date"2031-01-01"})
+                 ::ended-date   #time/date"2031-01-01"})
 
 (pco/defresolver $extract-table-columns
-  [{::keys [table]
-    :keys  [start-date]}]
+  [{::keys [table
+            start-date]}]
   {::pco/output [{::data [:start-date
-                          :Date
-                          :Above-Index
-                          :Below-Index]}]}
+                          {:Date  [:data|]}
+                          {:Above-Index  [:data|]}
+                          {:Below-Index  [:data|]}]}]}
   ;;Should just be
   #_
   (into {}
@@ -73,22 +73,28 @@
   {::data (merge {:start-date start-date}
                  (update-vals (into {}
                                     table)
-                              vec))})
+                              (fn convert-tmd-cols
+                                [tmd-col]
+                                {:data| (vec tmd-col)})))})
 #_
 (pathmore/check [{::data [:Above-Index]}]
-                {:start-date #time/date"2011-01-01"
-                 :end-date   #time/date"2031-01-01"})
+                {::start-date #time/date"2011-01-01"
+                 ::ended-date   #time/date"2031-01-01"})
 
 (pco/defresolver $is-above?
+  "Maybe move to a generic ns?"
   [{:keys [Above-Index]}]
-  {:Above? (->> Above-Index
-                (mapv #(-> %
-                           zero?
-                           not)))})
+  {::pco/input  [{:Above-Index [:data|]}]
+   ::pco/output [{:Above? [:data|]}]}
+  {:Above? {:data| (->> Above-Index
+                        :data|
+                        (mapv #(-> %
+                                   zero?
+                                   not)))}})
 #_
 (pathmore/check [{::data [:Above?]}]
-                {:start-date #time/date"2011-01-01"
-                 :end-date   #time/date"2031-01-01"})
+                {::start-date #time/date"2011-01-01"
+                 ::ended-date   #time/date"2031-01-01"})
 
 
 (def $resolvers$

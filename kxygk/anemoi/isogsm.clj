@@ -143,19 +143,21 @@
 (pco/defresolver $extract-table-columns
   [{::keys [table
             start-date]}]
-  {::pco/output [{::data [:Date
-                          :start-date
-                          :Temperature
-                          :Rain-H2-16O
-                          :Rain-H2-18O
-                          :Rain-D2-16O
-                          :Vapor-H2-16O
-                          :Vapor-H2-18O
-                          :Vapor-D2-16O]}]}
+  {::pco/output [{::data [:start-date
+                          {:Date  [:data|]}
+                          {:Temperature  [:data|]}
+                          {:Rain-H2-16O  [:data|]}
+                          {:Rain-H2-18O  [:data|]}
+                          {:Rain-D2-16O  [:data|]}
+                          {:Vapor-H2-16O  [:data|]}
+                          {:Vapor-H2-18O  [:data|]}
+                          {:Vapor-D2-16O  [:data|]}]}]}
   {::data (merge {:start-date start-date}
                  (update-vals (into {}
                                     table)
-                              vec))})
+                              (fn convert-tmd-cols
+                                [tmd-col]
+                                {:data| (vec tmd-col)})))})
 #_
 (pathmore/check [{::data [:Temperature]}])
 
@@ -193,16 +195,16 @@ https://zenodo.org/records/14681370
            Vapor-H2-16O
            Vapor-H2-18O]}]
   {:Rain-mm    Rain-H2-16O
-   :Rain-d18O  (mapv calc-d18O
-                     Rain-H2-16O
-                     Rain-H2-18O)
-   :Vapor-d18O (mapv calc-d18O
-                     Vapor-H2-16O
-                     Vapor-H2-18O)})
+   :Rain-d18O  {:data| (mapv calc-d18O
+                             (:data| Rain-H2-16O)
+                             (:data| Rain-H2-18O))}
+   :Vapor-d18O {:data| (mapv calc-d18O
+                             (:data| Vapor-H2-16O)
+                             (:data| Vapor-H2-18O))}})
 #_
 (pathmore/check [{::data [:Vapor-H2-18O]}]
-                  {:start-date #time/date "2011-01-01"
-                   :end-date   #time/date "2021-01-01"})
+                {::start-date #time/date "2011-01-01"
+                 ::end-date   #time/date "2021-01-01"})
 
 (def $resolvers$
   (->> (pathmore/find-resolvers)

@@ -1,7 +1,5 @@
 (ns kxygk.anemoi.airport
-  (:require [kxygk.anemoi.stat :as stat]
-            [kxygk.anemoi.enso :as enso]
-            kxygk.anemoi.generic
+  (:require [kxygk.anemoi.enso :as enso]
             [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.index :as index]
             [clojure.math]
@@ -29,13 +27,13 @@
 
 (def $state$
   "for testing only"
-  {::filestr (str "/home/kxygk/Data/airport/"
-                  "first-sheet-extracted.csv")
-   ::index/filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                        "climate-index.csv") ;; gets `joined` in to the airport table
-   #_#_#_#_   ;; for testing manual override of dates
-   ::index/start-date              #time/date"2011-01-01"
-   ::index/ended-date                #time/date"2031-01-01"})
+  {::filestr          (str "/home/kxygk/Data/airport/"
+                           "first-sheet-extracted.csv")
+   ::index/filestr    (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                           "climate-index.csv") ;; gets `joined` in to the airport table
+   ;; for testing manual override of dates
+   ::index/start-date #time/date"2011-01-01"
+   ::index/ended-date #time/date"2031-01-01"})
 #_
 (-> ::index/table
     pathmore/check)
@@ -153,8 +151,10 @@
                (ds/column-cast :Rain-mm
                                :float64))})
 #_
-(pathmore/check ::table
-                {::crazy-dates #{#time/date "2017-07-30"}})
+(:Date
+(into {}
+      (pathmore/check ::table
+                {::crazy-dates #{#time/date "2017-07-30"}})))
 
 (pco/defresolver $start-ended-dates
   [{::keys [raw-table]}]
@@ -177,18 +177,23 @@ So they need to coerced to `vec`"
   [{::keys [table]
     :keys  [start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
   {::pco/output [{::data [:start-date
-                          :Date
-                          :Rain-mm
-                          :d18O
-                          :dD
-                          :Comment]}]}
+                          {:Date [:data|]}
+                          {:Rain-mm [:data|]}
+                          {:d18O [:data|]}
+                          {:dD [:data|]}
+                          {:Comment [:data|]}]}]}
   {::data (merge {:start-date start-date}
-                 (update-vals (into {}
+                 (update-vals (into {} ;; turns it into a map of TMD cols
                                     table)
-                              vec))})
+                              (fn convert-tmd-cols
+                                [tmd-col]
+                                {:data| (vec tmd-col)})))})  ;; turns TMD cols in to normal vecs
+#_
+(pathmore/check [{::data [:Date]}]
+                {::crazy-dates #{#time/date "2017-07-30"}})
 #_
 (pathmore/check [{::data [:Days-from-start]}]
-                 {::crazy-dates #{#time/date "2017-07-30"}})
+                {::crazy-dates #{#time/date "2017-07-30"}})
 
 #_
 (pathmore/check [{::data [:Days-from-start]}]
@@ -216,17 +221,19 @@ So they need to coerced to `vec`"
   [{::keys [table-classified]
     :keys  [start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
   {::pco/output [{::data-classified [:start-date
-                                     :Date
-                                     :Rain-mm
-                                     :d18O
-                                     :dD
-                                     :Comment
-                                     :Above-Index
-                                     :Below-Index]}]}
+                                     {:Date [:data|]}
+                                     {:Rain-mm [:data|]}
+                                     {:d18O [:data|]}
+                                     {:dD [:data|]}
+                                     {:Comment [:data|]}
+                                     {:Above-Index [:data|]}
+                                     {:Below-Index [:data|]}]}]}
   {::data-classified (merge {:start-date start-date}
                             (update-vals (into {}
                                                table-classified)
-                                         vec))})
+                                         (fn convert-tmd-cols
+                                           [tmd-col]
+                                           {:data| (vec tmd-col)})))})
 
 ;;###########################################
 ;;###########################################
@@ -255,7 +262,6 @@ So they need to coerced to `vec`"
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)
-        kxygk.anemoi.generic/$resolvers$
         kxygk.anemoi.index/$resolvers$]
        flatten
        (mapv pathmore/inject-simple-cache)))
