@@ -158,14 +158,14 @@
 
 (pco/defresolver $start-ended-dates
   [{::keys [raw-table]}]
-  {::pco/output [:start-date
-                 :ended-date]}
+  {::pco/output [::start-date
+                 ::ended-date]}
   (let [sorted-dates (-> raw-table
                          :Date
                          vec
                          sort)]
-    {:start-date (first sorted-dates)
-     :ended-date (last sorted-dates)}))
+    {::start-date (first sorted-dates)
+     ::ended-date (last sorted-dates)}))
 #_
 (pathmore/check :ended-date)
 
@@ -174,8 +174,8 @@
 Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
-  [{::keys [table]
-    :keys  [start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  [{::keys [table
+            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
   {::pco/output [{::data [:start-date
                           {:Date [:data|]}
                           {:Rain-mm [:data|]}
@@ -218,8 +218,8 @@ So they need to coerced to `vec`"
 Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
-  [{::keys [table-classified]
-    :keys  [start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  [{::keys [table-classified
+            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
   {::pco/output [{::data-classified [:start-date
                                      {:Date [:data|]}
                                      {:Rain-mm [:data|]}
