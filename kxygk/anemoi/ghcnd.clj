@@ -129,14 +129,21 @@
 #_
 (pathmore/check ::ended-date)
 
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
+#_
+(pathmore/check ::day-zero)
+
 (pco/defresolver $extract-table-columns
   "Extract the columsn from the table.
 Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
   [{::keys [table
-            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
-  {::pco/output [{::data [:start-date
+            day-zero]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  {::pco/output [{::data [:day-zero
                           {:Station [:data|]}
                           {:Date [:data|]}
                           {:Lat [:data|]}
@@ -153,8 +160,8 @@ So they need to coerced to `vec`"
                           {:T-avg-attribs [:data|]}
                           {:fill [:data|]}]}]}
   (println (str "GHCND Start Date: "
-                start-date))
-  {::data (merge {:start-date start-date}
+                day-zero))
+  {::data (merge {:day-zero day-zero}
                  (update-vals (into {}
                                     table)
                               (fn wrap-with-data-key

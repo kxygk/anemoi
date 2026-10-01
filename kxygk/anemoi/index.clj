@@ -39,7 +39,7 @@
 #_
 (pathmore/check ::-all-dates-vec
                 {::start-date #time/date"2011-01-01"
-                 ::end-date   #time/date"2031-01-01"})
+                 ::ended-date   #time/date"2031-01-01"})
 
 (pco/defresolver $add-dates
   [{::keys [raw-table
@@ -57,10 +57,20 @@
                 {::start-date #time/date"2011-01-01"
                  ::ended-date   #time/date"2031-01-01"})
 
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
+#_
+(pathmore/check ::-all-dates-vec
+                {::start-date #time/date"2011-01-01"
+                 ::ended-date   #time/date"2031-01-01"})
+
+
 (pco/defresolver $extract-table-columns
   [{::keys [table
-            start-date]}]
-  {::pco/output [{::data [:start-date
+            day-zero]}]
+  {::pco/output [{::data [:day-zero
                           {:Date  [:data|]}
                           {:Above-Index  [:data|]}
                           {:Below-Index  [:data|]}]}]}
@@ -70,14 +80,14 @@
         table)
   ;; but there is a bug: https://github.com/techascent/tech.ml.dataset/issues/479
   ;; Use this for now
-  {::data (merge {:start-date start-date}
+  {::data (merge {:day-zero day-zero}
                  (update-vals (into {}
                                     table)
                               (fn convert-tmd-cols
                                 [tmd-col]
                                 {:data| (vec tmd-col)})))})
 #_
-(pathmore/check [{::data [:Above-Index]}]
+(pathmore/check [{::data [:Days-from-start]}]
                 {::start-date #time/date"2011-01-01"
                  ::ended-date   #time/date"2031-01-01"})
 
@@ -98,7 +108,8 @@
 
 
 (def $resolvers$
-  (->> (pathmore/find-resolvers)
+  (->> [(pathmore/find-resolvers)
+        kxygk.mathom.core/$resolvers$]
        (mapv pathmore/inject-simple-cache)))
 
 (def $env$

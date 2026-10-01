@@ -1,7 +1,8 @@
 (ns kxygk.anemoi.airport
   (:require [kxygk.anemoi.enso :as enso]
-            [kxygk.pathmore.core :as pathmore]
             [kxygk.anemoi.index :as index]
+            [kxygk.pathmore.core :as pathmore]
+            kxygk.mathom.core
             [clojure.math]
             [clojure.string]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
@@ -167,7 +168,14 @@
     {::start-date (first sorted-dates)
      ::ended-date (last sorted-dates)}))
 #_
-(pathmore/check :ended-date)
+(pathmore/check ::ended-date)
+
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
+#_
+(pathmore/check ::day-zero)
 
 (pco/defresolver $extract-table-columns
   "Extract the columsn from the table.
@@ -175,14 +183,14 @@ Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
   [{::keys [table
-            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
-  {::pco/output [{::data [:start-date
+            day-zero]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  {::pco/output [{::data [:day-zero
                           {:Date [:data|]}
                           {:Rain-mm [:data|]}
                           {:d18O [:data|]}
                           {:dD [:data|]}
                           {:Comment [:data|]}]}]}
-  {::data (merge {:start-date start-date}
+  {::data (merge {:day-zero day-zero}
                  (update-vals (into {} ;; turns it into a map of TMD cols
                                     table)
                               (fn convert-tmd-cols
@@ -212,15 +220,14 @@ So they need to coerced to `vec`"
 (pathmore/check ::table-classified
                 {::crazy-dates #{#time/date "2017-07-30"}})
 
-
 (pco/defresolver $extract-table-classified-columns
   "Extract the columsn from the table.
 Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
   [{::keys [table-classified
-            start-date]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
-  {::pco/output [{::data-classified [:start-date
+            day-zero]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  {::pco/output [{::data-classified [:day-zero
                                      {:Date [:data|]}
                                      {:Rain-mm [:data|]}
                                      {:d18O [:data|]}
@@ -228,7 +235,7 @@ So they need to coerced to `vec`"
                                      {:Comment [:data|]}
                                      {:Above-Index [:data|]}
                                      {:Below-Index [:data|]}]}]}
-  {::data-classified (merge {:start-date start-date}
+  {::data-classified (merge {:day-zero day-zero}
                             (update-vals (into {}
                                                table-classified)
                                          (fn convert-tmd-cols
@@ -262,6 +269,7 @@ So they need to coerced to `vec`"
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)
+        kxygk.mathom.core/$resolvers$
         kxygk.anemoi.index/$resolvers$]
        flatten
        (mapv pathmore/inject-simple-cache)))

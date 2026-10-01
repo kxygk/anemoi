@@ -106,7 +106,7 @@
 
 (pco/defresolver $-all-dates-vec
   [{::keys [start-date
-           ended-date]}]
+            ended-date]}]
   {::pco/output [::-all-dates-vec]}
   {::-all-dates-vec (->> (tick/range
                            (tick/at start-date (tick/midnight))
@@ -140,10 +140,17 @@
 #_
 (pathmore/check ::table)
 
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
+#_
+(pathmore/check ::day-zero)
+
 (pco/defresolver $extract-table-columns
   [{::keys [table
-            start-date]}]
-  {::pco/output [{::data [:start-date
+            day-zero]}]
+  {::pco/output [{::data [:day-zero
                           {:Date  [:data|]}
                           {:Temperature  [:data|]}
                           {:Rain-H2-16O  [:data|]}
@@ -152,14 +159,14 @@
                           {:Vapor-H2-16O  [:data|]}
                           {:Vapor-H2-18O  [:data|]}
                           {:Vapor-D2-16O  [:data|]}]}]}
-  {::data (merge {:start-date start-date}
+  {::data (merge {:day-zero day-zero}
                  (update-vals (into {}
                                     table)
                               (fn convert-tmd-cols
                                 [tmd-col]
                                 {:data| (vec tmd-col)})))})
 #_
-(pathmore/check [{::data [:Temperature]}])
+(pathmore/check [{::data [:Days-from-start]}])
 
 (defn
   calc-d18O
@@ -207,7 +214,8 @@ https://zenodo.org/records/14681370
                  ::end-date   #time/date "2021-01-01"})
 
 (def $resolvers$
-  (->> (pathmore/find-resolvers)
+  (->> [(pathmore/find-resolvers)
+        kxygk.mathom.core/$resolvers$]
        (mapv pathmore/inject-simple-cache)))
 
 (def $env$

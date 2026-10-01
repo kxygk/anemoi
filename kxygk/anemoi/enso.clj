@@ -25,7 +25,7 @@
   {::table (-> filestr
                (ds/->dataset {:dataset-name "ENSO Index (Nino 3.4)"
                               :key-fn       kxygk.anemoi.util/normalize-colname})
-               (ds/rename-columns [:Dates
+               (ds/rename-columns [:Date
                                    :EnsoIndex])
                (ds/filter-column :EnsoIndex
                                  #(not= %
@@ -39,6 +39,20 @@
                                 :Month (tick/month adjusted-date)}))))})
 #_
 (pathmore/check ::table)
+
+(pco/defresolver $start-ended-dates
+  [{::keys [table]}]
+  {::pco/output [::start-date
+                 ::ended-date]}
+  (let [sorted-dates (-> table
+                         :Date
+                         vec
+                         sort)]
+    {::start-date (first sorted-dates)
+     ::ended-date (last sorted-dates)}))
+#_
+(pathmore/check ::start-date)
+
 #_
 (->> @(p.a.eql/process env
                       {::filestr (str "/home/kxygk/Data/enso/"
@@ -83,25 +97,32 @@
 ;; | 2025-04-01 |      -0.14 |  2025 |     APRIL |
 ;; | 2025-05-01 |      -0.16 |  2025 |       MAY |
 
-(pco/defresolver $extract-table-columns
-  [{::keys [table]}]
-  {::pco/output [:Dates
-                 :EnsoIndex]}
-  ;;Should just be
-  #_
-  (into {}
-        table)
-  ;; but there is a bug: https://github.com/techascent/tech.ml.dataset/issues/479
-  ;; Use this for now
-  ;;#_
-  (update-vals (into {}
-                     table)
-               vec))
+
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
 #_
-(pathmore/check :EnsoIndex)
+(pathmore/check ::day-zero)
+
+(pco/defresolver $extract-table-columns
+  [{::keys [table
+            day-zero]}]
+  {::pco/output [{::data [:day-zero
+                          {:Date [:data|]}
+                          {:EnsoIndex [:data|]}]}]}
+  {::data (merge {:day-zero day-zero}
+                 (update-vals (into {} ;; turns it into a map of TMD cols
+                                    table)
+                              (fn convert-tmd-cols
+                                [tmd-col]
+                                {:data| (vec tmd-col)})))})
+#_
+(pathmore/check [{::data [:Days-from-start]}])
 
 (def $resolvers$
-  (->> (pathmore/find-resolvers)
+  (->> [(pathmore/find-resolvers)
+        kxygk.mathom.core/$resolvers$]
        (mapv pathmore/inject-simple-cache)))
 
 (def $env$

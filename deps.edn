@@ -1,5 +1,6 @@
 {:deps  {com.wsscode/pathom3                      {:mvn/version "2025.01.16-alpha"}
          ;;com.wsscode/pathom-viz-connector         {:mvn/version "2021.04.20"}
+         dev.weavejester/medley                   {:mvn/version "1.10.0"}
          funcool/promesa                          {:mvn/version "12.0.0-RC2"}
          cljfx/cljfx                              {:mvn/version "1.10.6"}
          ;;

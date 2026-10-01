@@ -1,6 +1,7 @@
 (ns kxygk.anemoi.klang
   (:require [kxygk.anemoi.enso :as enso]
             [kxygk.pathmore.core :as pathmore]
+            kxygk.mathom.convert
             kxygk.mathom.core
             ;;[kxygk.anemoi.index :as index]
             kxygk.anemoi.util
@@ -43,15 +44,45 @@
 #_
 (pathmore/check ::table)
 
+(pco/defresolver $start-ended-times
+  [{::keys [table]}]
+  {::pco/output [::start-date
+                 ::ended-date]}
+  (let [sorted-dates (-> table
+                         :Year-Decimal
+                         vec
+                         sort)]
+    {::start-date (-> sorted-dates
+                      first
+                      kxygk.mathom.convert/year-decimal-to-date-time
+                      tick/date)
+     ::ended-date (-> sorted-dates
+                      last
+                      kxygk.mathom.convert/year-decimal-to-date-time
+                      tick/date)}))
+#_
+(pathmore/check ::start-date)
+#_
+(pathmore/check ::ended-date)
+
+(pco/defresolver $default-day-zero
+  [{::keys [start-date]}]
+  {::pco/output [::day-zero]}
+  {::day-zero start-date})
+#_
+(pathmore/check ::day-zero)
+
 (pco/defresolver $extract-table-columns
   "Extract the columsn from the table.
 Note that unfortunately they can't be treated as collections directly b/c of bug
 See: https://github.com/techascent/tech.ml.dataset/issues/479
 So they need to coerced to `vec`"
-  [{::keys [table]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
-  {::pco/output [{::data [{:Year-Decimal [:data|]}
+  [{::keys [table
+            day-zero]}] ;; Forwarded deeper to convert `Date` to `Days..` .. TODO make optional
+  {::pco/output [{::data [:day-zero
+                          {:Year-Decimal [:data|]}
                           {:d18O [:data|]}]}]}
-  {::data (merge {} ;; injection point (unused)
+  {::data (merge {:day-zero day-zero} ;; injection point
                  (update-vals (into {} ;; turns it into a map of TMD cols
                                     table)
                               (fn convert-tmd-cols
@@ -70,11 +101,13 @@ So they need to coerced to `vec`"
 
 (pco/defresolver $klang-year-d18O
   [{::keys [klang-table]}]
-  {::pco/output [::klang-year-d18O]}
-  (p/vthread {::klang-year-d18O (sort-by first
-                                         (mapv vector
-                                               (:Year klang-table)
-                                               (:d18O klang-table)))}))
+  {::pco/input [{::data [{:Year-Decimal [:data|]}
+                         {:d18O [:data|]}]}]
+   ::pco/output [{::day-d18O [:data|]}]}
+  {::day-d18O (sort-by first
+                       (mapv vector
+                             (:blah klang-table)
+                             (:d18O klang-table)))})
 
 (def $resolvers$
   (->> [(pathmore/find-resolvers)

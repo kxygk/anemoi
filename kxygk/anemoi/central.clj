@@ -4,6 +4,7 @@
             [kxygk.anemoi.index :as index]
             [kxygk.anemoi.isogsm :as isogsm]
             [kxygk.anemoi.ghcnd :as ghcnd]
+            [kxygk.anemoi.klang :as klang]
             [kxygk.anemoi.nakhon :as nakhon]
             [kxygk.anemoi.plot :as plot]
             [kxygk.pathmore.core :as pathmore]
@@ -13,6 +14,8 @@
             [criterium.core :refer [bench]]
             [clj-async-profiler.core :as prof]
             ;;
+            [medley.core :as medley]
+            [tick.core                    :as tick]
             [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
             [com.wsscode.pathom3.interface.smart-map :as psm]
             [com.wsscode.pathom3.connect.runner :as pcr]
@@ -23,9 +26,10 @@
             [com.wsscode.pathom3.connect.indexes :as pci]
             [promesa.core :as p]))
 
+(pathmore/clean-ns!)
 
 (def *state
-  (atom {::plot/width                    1800
+  (atom {::plot/width                    2800
          ::plot/height                   1300
          ::plot/scale                    100
          ::plot/margin-frac              0.1
@@ -110,23 +114,49 @@
                       @*state
                       [:start-date]))
 
+#_
+(time (gen-plots))
+
+
+(pco/defresolver $global-time-bounds
+  [{::keys [day-zero
+            stop-day]}]
+  {::pco/output [::airport/day-zero
+                 ::enso/day-zero
+                 ::index/day-zero
+                 ::isogsm/day-zero
+                 ::ghcnd/day-zero
+                 ::klang/day-zero
+                 ::plot/day-zero]}
+  {::airport/day-zero day-zero
+   ::enso/day-zero day-zero
+   ::index/day-zero day-zero
+   ::isogsm/day-zero day-zero
+   ::ghcnd/day-zero day-zero
+   ::klang/day-zero day-zero
+   ::plot/day-zero day-zero
+   :time-window-days (tick/days (tick/between day-zero
+                                              stop-day))})
+
 (pco/defresolver $repacked
-  [{:keys          [nakhon-gauge]
-    ::plot/keys    [width
-                    height
-                    scale
-                    margin-frac
-                    cycle-start-value
-                    cycle-length
-                    cycle-phase]
-    ::airport/keys [filestr
-                    crazy-dates]
-    ::index/keys   [filestr
-                    start-date
-                    ended-date]
-    ::isogsm/keys  [dirstr]
-    :as            inputs}]
-  {::pco/output [{::figures [{::modern   [{:nakhon-gauge [::ghcnd/raingauge-filestr]}
+  [inputs]
+  {::pco/input  [{:nakhon-gauge [::ghcnd/raingauge-filestr]}
+                 ::plot/width
+                 ::plot/height
+                 ::plot/scale
+                 ::plot/margin-frac
+                 ::plot/cycle-start-value
+                 ::plot/cycle-length
+                 ::plot/cycle-phase
+                 ::airport/filestr
+                 ::airport/start-date
+                 ::airport/ended-date
+                 ::airport/crazy-dates
+                 ::index/filestr
+                 ::index/start-date
+                 ::index/ended-date
+                 ::isogsm/dirstr]
+   ::pco/output [{::figures [{::modern   [{:nakhon-gauge [::ghcnd/raingauge-filestr]}
                                           ::plot/width
                                           ::plot/height
                                           ::plot/scale
@@ -154,14 +184,24 @@
                                           ::index/start-date
                                           ::index/end-date
                                           ::isogsm/dirstr]}]}]}
-  {::figures (merge {} #_inputs
-                    {::modern (merge inputs
-                                     #_
-                                     {::airport/data {:start-date start-date}})}
-                    {::historical (merge inputs)}
-                    #_#_
-                    {::plot/airport-classified inputs}
-                    {::plot/index-data inputs})})
+  (println (str "Airport Dates - Start: "
+                (::airport/start-date inputs)
+                " End: "
+                (::airport/ended-date  inputs)))
+  (let [modern-zero-day (-> inputs
+                            ::airport/start-date)
+        modern-stop-day (-> inputs
+                            ::airport/ended-date)]
+  {::figures (medley/deep-merge {::modern (medley/deep-merge inputs
+                                                             {::day-zero modern-zero-day})
+                                ::historical (medley/deep-merge inputs)})}))
+
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [::figures]))
+#_
+(pathmore/check ::figures)
 
 (def plan-cache*
   (atom {}))
@@ -231,6 +271,14 @@
 (-> @(p.a.eql/process env
                       @*state
                       [{::figures [{::modern [:kxygk.anemoi.ghcnd/raingauge-filestr]}]}]))
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::airport/data []}]}]}]))
+#_
+(-> @(p.a.eql/process env
+                      @*state
+                      [{::figures [{::modern [{::plot/d18O-rain [:x]}]}]}]))
 #_
 (-> @(p.a.eql/process env
                       @*state
