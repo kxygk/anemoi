@@ -234,11 +234,11 @@
                               {:y [:data|]}
                               :meta]}]}
   (println (str "Last Point During Repack: "
-                (last (:Days-from-start data))
+                (last (:data| (:Days-from-start data)))
                 " First Date: "
-                (first (:Date data))
+                (first (:data| (:Date data)))
                 " Last Date: "
-                (last (:Date data))
+                (last (:data| (:Date data)))
                 ))
   {::day-rain {:x (:Days-from-start data)
                :y (:Rain-mm data)}
