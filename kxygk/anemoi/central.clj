@@ -117,29 +117,12 @@
 #_
 (time (gen-plots))
 
-
-(pco/defresolver $global-time-bounds
-  [{:keys [day-zero]}]
-  {::pco/output [::airport/day-zero
-                 ::enso/day-zero
-                 ::index/day-zero
-                 ::isogsm/day-zero
-                 ::ghcnd/day-zero
-                 ::klang/day-zero]}
-  {::airport/day-zero day-zero
-   ::enso/day-zero day-zero
-   ::index/day-zero day-zero
-   ::isogsm/day-zero day-zero
-   ::ghcnd/day-zero day-zero
-   ::klang/day-zero day-zero})
-
-
 (pco/defresolver $global-time-bounds
   [{:keys [time-span-days
            jan1st-day-to-year]}]
   {::pco/output [::plot/num-days
                  ::plot/jan1st-day-to-year]}
-  {::plot/num-days     time-span-days ;; made my `mathom/convert` from `:day-zero` and `:stop-day`
+  {::plot/num-days           time-span-days ;; made my `mathom/convert` from `:day-zero` and `:stop-day`
    ::plot/jan1st-day-to-year jan1st-day-to-year})
 #_
 (pathmore/check :time-span-days
@@ -203,14 +186,18 @@
         modern-stop-day (-> inputs
                             ::airport/ended-date)]
     {::figures (medley/deep-merge {::modern     (medley/deep-merge inputs
-                                                                   {:day-zero modern-day-zero
-                                                                    :stop-day modern-stop-day
+                                                                   {:day-zero          modern-day-zero
+                                                                    :stop-day          modern-stop-day
+                                                                    ;; these need to be injected directly!
+                                                                    ;; if they're injected through a resolver,
+                                                                    ;; then the `default` is triggered.
+                                                                    ;; it will use data start/end dates
                                                                     ::airport/day-zero modern-day-zero
-                                                                    ::enso/day-zero modern-day-zero
-                                                                    ::index/day-zero modern-day-zero
-                                                                    ::isogsm/day-zero modern-day-zero
-                                                                    ::ghcnd/day-zero modern-day-zero
-                                                                    ::klang/day-zero modern-day-zero})
+                                                                    ::enso/day-zero    modern-day-zero
+                                                                    ::index/day-zero   modern-day-zero
+                                                                    ::isogsm/day-zero  modern-day-zero
+                                                                    ::ghcnd/day-zero   modern-day-zero
+                                                                    ::klang/day-zero   modern-day-zero})
                                    ::historical (medley/deep-merge inputs)})}))
 
 #_

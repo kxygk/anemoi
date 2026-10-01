@@ -153,9 +153,9 @@
                                :float64))})
 #_
 (:Date
-(into {}
-      (pathmore/check ::table
-                {::crazy-dates #{#time/date "2017-07-30"}})))
+ (into {}
+       (pathmore/check ::table
+                       {::crazy-dates #{#time/date "2017-07-30"}})))
 
 (pco/defresolver $start-ended-dates
   [{::keys [raw-table]}]

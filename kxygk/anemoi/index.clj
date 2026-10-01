@@ -39,7 +39,7 @@
 #_
 (pathmore/check ::-all-dates-vec
                 {::start-date #time/date"2011-01-01"
-                 ::ended-date   #time/date"2031-01-01"})
+                 ::ended-date #time/date"2031-01-01"})
 
 (pco/defresolver $add-dates
   [{::keys [raw-table
@@ -55,31 +55,35 @@
                        (take (ds/row-count raw-table))))})#_
 (pathmore/check ::table
                 {::start-date #time/date"2011-01-01"
-                 ::ended-date   #time/date"2031-01-01"})
+                 ::ended-date #time/date"2031-01-01"})
 
 (pco/defresolver $default-day-zero
   [{::keys [start-date]}]
   {::pco/output [::day-zero]}
+  (println (str "Index using default data start as day zero: "
+                start-date))
   {::day-zero start-date})
 #_
 (pathmore/check ::-all-dates-vec
                 {::start-date #time/date"2011-01-01"
-                 ::ended-date   #time/date"2031-01-01"})
+                 ::ended-date #time/date"2031-01-01"})
 
 
 (pco/defresolver $extract-table-columns
   [{::keys [table
             day-zero]}]
   {::pco/output [{::data [:day-zero
-                          {:Date  [:data|]}
-                          {:Above-Index  [:data|]}
-                          {:Below-Index  [:data|]}]}]}
+                          {:Date [:data|]}
+                          {:Above-Index [:data|]}
+                          {:Below-Index [:data|]}]}]}
   ;;Should just be
   #_
   (into {}
         table)
   ;; but there is a bug: https://github.com/techascent/tech.ml.dataset/issues/479
   ;; Use this for now
+  (println (str "Index count day zero as: "
+                day-zero))
   {::data (merge {:day-zero day-zero}
                  (update-vals (into {}
                                     table)
@@ -89,7 +93,7 @@
 #_
 (pathmore/check [{::data [:Days-from-start]}]
                 {::start-date #time/date"2011-01-01"
-                 ::ended-date   #time/date"2031-01-01"})
+                 ::ended-date #time/date"2031-01-01"})
 
 (pco/defresolver $is-above?
   "Maybe move to a generic ns?"
@@ -104,7 +108,7 @@
 #_
 (pathmore/check [{::data [:Above?]}]
                 {::start-date #time/date"2011-01-01"
-                 ::ended-date   #time/date"2031-01-01"})
+                 ::ended-date #time/date"2031-01-01"})
 
 
 (def $resolvers$
