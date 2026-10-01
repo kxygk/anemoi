@@ -6,6 +6,7 @@
             [tech.v3.dataset              :as ds]
             [tick.core                    :as tick]
             [kxygk.pathmore.core :as pathmore]
+            kxygk.mathom.core
             [kxygk.anemoi.util]))
 
 (pathmore/clean-ns!)

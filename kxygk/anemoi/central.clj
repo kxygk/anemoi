@@ -28,81 +28,81 @@
 
 (pathmore/clean-ns!)
 
-(def *state
-  (atom {::plot/width                    2800
-         ::plot/height                   1300
-         ::plot/scale                    100
-         ::plot/margin-frac              0.1
-         ::airport/enso-filestr          (str "/home/kxygk/Data/enso/"
-                                              "nina34.anom.csv")
-         ::airport/isotopes-filestr      (str "/home/kxygk/Data/airport/"
-                                              "first-sheet-extracted.csv")
-         ::airport/climate-index-filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                              "climate-index.csv")
-         ::airport/nakhon-filestr        (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                              ;;#_
-                                              "TH000048552"
-                                              ;; NAKHON - Winter storm target location
-                                              #_
-                                              "TH000048564"
-                                              ;;PHUKET - Exposed West Coast            ***
-                                              #_
-                                              "TH000048565"
-                                              ;;PHUKET AIRPORT - Shielded West Coast
-                                              #_
-                                              "TH000048551"
-                                              ;;SURAT THANI - Midpoint (middle of map) ***
-                                              #_
-                                              "TH000048567"
-                                              ;;TRANG - West Side of the Nakhon Range  ***
-                                              #_
-                                              "TH000048568"
-                                              ;;SONGKHLA - Southern East Coast
-                                              ".csv")
-         ;; *** -> start on Jan 1st 1951
-         ;;
-         ;; From: https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt
-         ;; TH000048551   9.1170   99.1500   11.0    SURAT THANI   
-         ;; TH000048552   8.5330   99.9500    9.0    NAKHON SI THAMMARAT
-         ;; TH000048564   7.8830   98.4000    3.0    PHUKET
-         ;; TH000048565   8.1320   98.3170    9.0    PHUKET AIRPORT
-         ;; TH000048567   7.5170   99.6170   16.0    TRANG
-         ;; TH000048568   7.2000  100.6170    9.0    SONGKHLA
-         ;; TH000048569   6.9170  100.4330   35.0    HAT YAI
-         ::klang-filestr                 (str "/home/kxygk/Data/Tan2019/"
-                                              "modern-part.csv")
-         ;; New format
-         ::enso-filestr                  (str "/home/kxygk/Data/enso/"
-                                              "nina34.anom.csv")
-         ::airport/filestr               (str "/home/kxygk/Data/airport/"
-                                              "first-sheet-extracted.csv")
-         ::index/filestr                 (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
-                                              "climate-index.csv")
-         ::isogsm/dirstr                 (str "/home/kxygk/Data/IsoGSM/"
-                                              "csv/"
-                                              #_"csv-nakhon/")
-         ::airport/crazy-dates           #{#time/date "2017-07-30"}
-         ::index/start-date              #time/date"2011-01-01"
-         ::index/ended-date              #time/date"2031-01-01"
-         :nakhon-gauge                   {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
-                                                                          "TH000048552"
-                                                                          ".csv")
-                                          #_#_#_#_#_#_
-                                          ::ghcnd/storm-threshold-mm (-> inputs
-                                                                         ::big-storm-mm)
-                                          ::ghcnd/start-date         (-> inputs
-                                                                         ::start-date)
-                                          ::ghcnd/end-date           (-> inputs
-                                                                         ::end-date)}
-         #_#_#_#_
-         :start-date                     #time/date"2011-01-01"
-         :end-date                       #time/date"2031-01-01" ;; Set to 2031 for now
-         ::plot/cycle-start-value        2011
-         ::plot/cycle-length             365
-         ::plot/cycle-phase              0
-         ::big-storm-mm                  80.0
-         :above-index-threshold          99.9    ;; default to no threshold
-         :below-index-threshold          99.9}))
+(def $state$
+  {::plot/width                    2800
+   ::plot/height                   1300
+   ::plot/scale                    100
+   ::plot/margin-frac              0.1
+   ::airport/enso-filestr          (str "/home/kxygk/Data/enso/"
+                                        "nina34.anom.csv")
+   ::airport/isotopes-filestr      (str "/home/kxygk/Data/airport/"
+                                        "first-sheet-extracted.csv")
+   ::airport/climate-index-filestr (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                                        "climate-index.csv")
+   ::airport/nakhon-filestr        (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                        ;;#_
+                                        "TH000048552"
+                                        ;; NAKHON - Winter storm target location
+                                        #_
+                                        "TH000048564"
+                                        ;;PHUKET - Exposed West Coast            ***
+                                        #_
+                                        "TH000048565"
+                                        ;;PHUKET AIRPORT - Shielded West Coast
+                                        #_
+                                        "TH000048551"
+                                        ;;SURAT THANI - Midpoint (middle of map) ***
+                                        #_
+                                        "TH000048567"
+                                        ;;TRANG - West Side of the Nakhon Range  ***
+                                        #_
+                                        "TH000048568"
+                                        ;;SONGKHLA - Southern East Coast
+                                        ".csv")
+   ;; *** -> start on Jan 1st 1951
+   ;;
+   ;; From: https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt
+   ;; TH000048551   9.1170   99.1500   11.0    SURAT THANI
+   ;; TH000048552   8.5330   99.9500    9.0    NAKHON SI THAMMARAT
+   ;; TH000048564   7.8830   98.4000    3.0    PHUKET
+   ;; TH000048565   8.1320   98.3170    9.0    PHUKET AIRPORT
+   ;; TH000048567   7.5170   99.6170   16.0    TRANG
+   ;; TH000048568   7.2000  100.6170    9.0    SONGKHLA
+   ;; TH000048569   6.9170  100.4330   35.0    HAT YAI
+   ::klang-filestr                 (str "/home/kxygk/Data/Tan2019/"
+                                        "modern-part.csv")
+   ;; New format
+   ::enso-filestr                  (str "/home/kxygk/Data/enso/"
+                                        "nina34.anom.csv")
+   ::airport/filestr               (str "/home/kxygk/Data/airport/"
+                                        "first-sheet-extracted.csv")
+   ::index/filestr                 (str "/home/kxygk/Projects/imergination.wiki/krabdaily/"
+                                        "climate-index.csv")
+   ::isogsm/dirstr                 (str "/home/kxygk/Data/IsoGSM/"
+                                        "csv/"
+                                        #_"csv-nakhon/")
+   ::airport/crazy-dates           #{#time/date "2017-07-30"}
+   ::index/start-date              #time/date"2011-01-01"
+   ::index/ended-date              #time/date"2031-01-01"
+   :nakhon-gauge                   {::ghcnd/raingauge-filestr  (str "/home/kxygk/Data/GHCNd/daily-summaries-latest/"
+                                                                    "TH000048552"
+                                                                    ".csv")
+                                    #_#_#_#_#_#_
+                                    ::ghcnd/storm-threshold-mm (-> inputs
+                                                                   ::big-storm-mm)
+                                    ::ghcnd/start-date         (-> inputs
+                                                                   ::start-date)
+                                    ::ghcnd/end-date           (-> inputs
+                                                                   ::end-date)}
+   #_#_#_#_
+   :start-date                     #time/date"2011-01-01"
+   :end-date                       #time/date"2031-01-01" ;; Set to 2031 for now
+   ::plot/cycle-start-value        2011
+   ::plot/cycle-length             365
+   ::plot/cycle-phase              0
+   ::big-storm-mm                  80.0
+   :above-index-threshold          99.9    ;; default to no threshold
+   :below-index-threshold          99.9})
 
 #_
 (-> @(p.a.eql/process env
@@ -119,24 +119,33 @@
 
 
 (pco/defresolver $global-time-bounds
-  [{::keys [day-zero
-            stop-day]}]
+  [{:keys [day-zero]}]
   {::pco/output [::airport/day-zero
                  ::enso/day-zero
                  ::index/day-zero
                  ::isogsm/day-zero
                  ::ghcnd/day-zero
-                 ::klang/day-zero
-                 ::plot/day-zero]}
+                 ::klang/day-zero]}
   {::airport/day-zero day-zero
    ::enso/day-zero day-zero
    ::index/day-zero day-zero
    ::isogsm/day-zero day-zero
    ::ghcnd/day-zero day-zero
-   ::klang/day-zero day-zero
-   ::plot/day-zero day-zero
-   :time-window-days (tick/days (tick/between day-zero
-                                              stop-day))})
+   ::klang/day-zero day-zero})
+
+
+(pco/defresolver $global-time-bounds
+  [{:keys [time-span-days
+           jan1st-day-to-year]}]
+  {::pco/output [::plot/num-days
+                 ::plot/jan1st-day-to-year]}
+  {::plot/num-days     time-span-days ;; made my `mathom/convert` from `:day-zero` and `:stop-day`
+   ::plot/jan1st-day-to-year jan1st-day-to-year})
+#_
+(pathmore/check :time-span-days
+                {:day-zero #time/date"2021-01-01"
+                 :stop-day #time/date"2022-02-01"})
+
 
 (pco/defresolver $repacked
   [inputs]
@@ -149,14 +158,16 @@
                  ::plot/cycle-length
                  ::plot/cycle-phase
                  ::airport/filestr
+                 ::airport/crazy-dates
                  ::airport/start-date
                  ::airport/ended-date
-                 ::airport/crazy-dates
                  ::index/filestr
                  ::index/start-date
                  ::index/ended-date
                  ::isogsm/dirstr]
    ::pco/output [{::figures [{::modern   [{:nakhon-gauge [::ghcnd/raingauge-filestr]}
+                                          :day-zero
+                                          :stop-day
                                           ::plot/width
                                           ::plot/height
                                           ::plot/scale
@@ -167,10 +178,9 @@
                                           ::airport/filestr
                                           ::airport/crazy-dates
                                           ::index/filestr
-                                          ::index/start-date
-                                          ::index/end-date
                                           ::isogsm/dirstr]
                               ::historic [:nakhon-gauge
+                                          ::day-zero
                                           ::plot/width
                                           ::plot/height
                                           ::plot/scale
@@ -182,19 +192,26 @@
                                           ::airport/crazy-dates
                                           ::index/filestr
                                           ::index/start-date
-                                          ::index/end-date
+                                          ::index/ended-date
                                           ::isogsm/dirstr]}]}]}
   (println (str "Airport Dates - Start: "
                 (::airport/start-date inputs)
                 " End: "
                 (::airport/ended-date  inputs)))
-  (let [modern-zero-day (-> inputs
+  (let [modern-day-zero (-> inputs
                             ::airport/start-date)
         modern-stop-day (-> inputs
                             ::airport/ended-date)]
-  {::figures (medley/deep-merge {::modern (medley/deep-merge inputs
-                                                             {::day-zero modern-zero-day})
-                                ::historical (medley/deep-merge inputs)})}))
+    {::figures (medley/deep-merge {::modern     (medley/deep-merge inputs
+                                                                   {:day-zero modern-day-zero
+                                                                    :stop-day modern-stop-day
+                                                                    ::airport/day-zero modern-day-zero
+                                                                    ::enso/day-zero modern-day-zero
+                                                                    ::index/day-zero modern-day-zero
+                                                                    ::isogsm/day-zero modern-day-zero
+                                                                    ::ghcnd/day-zero modern-day-zero
+                                                                    ::klang/day-zero modern-day-zero})
+                                   ::historical (medley/deep-merge inputs)})}))
 
 #_
 (-> @(p.a.eql/process env
@@ -207,110 +224,67 @@
   (atom {}))
 
 
-;;(pathmore/dedupe-resolvers
 
-(def env
+(def $resolvers$
+  (->> (pathmore/dedupe-resolvers [(pathmore/find-resolvers)
+                                   airport/$resolvers$
+                                   enso/$resolvers$
+                                   index/$resolvers$
+                                   isogsm/$resolvers$
+                                   ghcnd/$resolvers$
+                                   plot/$resolvers$
+                                   kxygk.mathom.core/$resolvers$])
+       flatten
+       (mapv pathmore/inject-simple-cache)))
+
+(def $env$
   (-> (pci/register {::p.a.eql/parallel? true}
-                    (pathmore/dedupe-resolvers [$repacked                   
-                                                kxygk.mathom.core/$resolvers$
-                                                airport/$resolvers$
-                                                enso/$resolvers$
-                                                index/$resolvers$
-                                                isogsm/$resolvers$
-                                                ghcnd/$resolvers$
-                                                plot/$resolvers$]))
+                    $resolvers$)
       (pcp/with-plan-cache plan-cache*)
       pathmore/inject-simple-cache-for-all-resolvers
       pathmore/wrap-all-resolvers-async))
 
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [::isogsm/table]}]}]))
 
+;;(pathmore/dedupe-resolvers
 
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [:nakhon-gauge]}]}]))
-;;#:kxygk.anemoi.central{:figures #:kxygk.anemoi.central{:modern {:nakhon-gauge #:kxygk.anemoi.ghcnd{:raingauge-filestr "/home/kxygk/Data/GHCNd/daily-summaries-latest/TH000048552.csv"}}}}
-
-
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern {:nakhon-gauge [::plot/width]}}]}]))
-
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{:nakhon-gauge [{::ghcnd/data [{:Days-from-start [:data|]}]}]}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{:nakhon-gauge [{::ghcnd/data [{:Rain-mm [:data|]}]}]}]}]}]))
-
-
-
+;; (def env
+;;   (-> (pci/register {::p.a.eql/parallel? true}
+;;                     (pathmore/dedupe-resolvers [$repacked                   
+;;                                                 kxygk.mathom.core/$resolvers$
+;;                                                 airport/$resolvers$
+;;                                                 enso/$resolvers$
+;;                                                 index/$resolvers$
+;;                                                 isogsm/$resolvers$
+;;                                                 ghcnd/$resolvers$
+;;                                                 plot/$resolvers$]))
+;;       (pcp/with-plan-cache plan-cache*)
+;;       pathmore/inject-simple-cache-for-all-resolvers
+;;       pathmore/wrap-all-resolvers-async))
 
 #_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{:nakhon-gauge [{::ghcnd/data [{:Days-from-start [:data|]}
-                                                                             {:Rain-mm [:data|]}]}]}]}]}]))
+(pathmore/check [{::figures [{::modern [{::plot/day-d18O [{:y [:min]}]}]}]}])
 #_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{:nakhon-gauge [{::ghcnd/daily-rain []}]}]}]}]))
-
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{:nakhon-gauge [::ghcnd/daily-rain]}]}]}]))
-
+(pathmore/check [{::figures [{::modern [::plot/num-days]}]}])
 #_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [:kxygk.anemoi.ghcnd/raingauge-filestr]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::airport/data []}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/d18O-rain [:x]}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/day-isogsm-rain-d18O [:meta]}]}]}]))
-#_
-(-> @(p.a.eql/process env
-                      @*state
-                      [{::figures [{::modern [{::plot/d18O-below-select-layer [::plot/svg]}]}]}]))
-
-;;(pathmore/check ::day-isogsm-rain-d18O)
+(pathmore/check [{::figures [{::modern [::plot/index-layer]}]}])
 
 
 ;;#_
 (defn gen-plots []
   (let [figs (->> [{::figures [{::modern     [{::plot/meteoric-water-line-subplot [::plot/svg]}
-                                               {::plot/amount-effect-subplot [::plot/svg]}
-                                               {::plot/rain-subplot [::plot/svg]}
-                                               {::plot/rain-d18O-subplot [::plot/svg]}
-                                               {::plot/rain-d18O-average-subplot [::plot/svg]}
-                                               {::plot/rain-d18O-classified-subplot [::plot/svg]}
-                                               {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
-                                               {::plot/index-subplot [::plot/svg]}
-                                               {::plot/index-d18O-subplot [::plot/svg]}
-                                               {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
-                                               {::plot/hist-rain-classified-subplot [::plot/svg]}
-                                               {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
-                                               {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
-                                               {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}
-                                              #_
-                                              {::plot/d18O-axis [::plot/svg]}
-                                              #_
-                                              {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}]
+                                              {::plot/amount-effect-subplot [::plot/svg]}
+                                              {::plot/rain-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-average-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-subplot [::plot/svg]}
+                                              {::plot/rain-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/index-subplot [::plot/svg]}
+                                              {::plot/index-d18O-subplot [::plot/svg]}
+                                              {::plot/isotope-d18O-classified-average-subplot [::plot/svg]}
+                                              {::plot/hist-rain-classified-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                              {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
+                                              {::plot/nakhon-d18O-classified-average-subplot [::plot/svg]}]
                                 ::historical [{::plot/meteoric-water-line-subplot [::plot/svg]}
                                               {::plot/amount-effect-subplot [::plot/svg]}
                                               {::plot/rain-subplot [::plot/svg]}
@@ -324,8 +298,8 @@
                                               {::plot/hist-rain-classified-subplot [::plot/svg]}
                                               {::plot/isogsm-rain-d18O-subplot [::plot/svg]}
                                               {::plot/isogsm-rain-d18O-subplot [::plot/svg]}]}]}]
-                  (p.a.eql/process env
-                                   (merge @*state
+                  (p.a.eql/process $env$
+                                   (merge $state$
                                           {::big-storm-mm 0.0}))
                   deref
                   ::figures

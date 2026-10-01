@@ -268,9 +268,9 @@ So they need to coerced to `vec`"
                                                (:d18O klang-table)))}))
 
 (def $resolvers$
-  (->> [(pathmore/find-resolvers)
-        kxygk.mathom.core/$resolvers$
-        kxygk.anemoi.index/$resolvers$]
+  (->> (pathmore/dedupe-resolvers [(pathmore/find-resolvers)
+                                   kxygk.mathom.core/$resolvers$
+                                   kxygk.anemoi.index/$resolvers$])
        flatten
        (mapv pathmore/inject-simple-cache)))
 

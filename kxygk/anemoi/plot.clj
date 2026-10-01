@@ -252,45 +252,23 @@
 #_
 (pathmore/check [{::day-d18O [:hist]}])
 
-
-(pco/defresolver $day-minmax ;; used everywhere.. so just to save typing a bit
-  [{::keys [day-rain]}]
-  {::pco/input [{::day-rain [{:x [:max]}]}]}
-  {::day-num-min 0 ;; Shouldn't use negative days!
-   ::day-num-max (-> day-rain
-                     :x
-                     :max)})
-
-;;
-#_
-:enso-data
-#_
-[:Dates
- :EnsoIndex]
-;;
-;;
-#_
-:index-data
-#_
-[:Date
- :Above-Index
- :Below-Index]
-;;
-;;
-
 (pco/defresolver $rain-axis
   [{::keys [width
             height
             scale
             margin-frac
-            day-num-max
+            num-days
             day-rain]}]
-  {::pco/input  [::day-num-max
+  {::pco/input  [::width
+                 ::height
+                 ::scale
+                 ::margin-frac
+                 ::num-days
                  {::day-rain [{:y [:max]}]}]
    ::pco/output [::rain-axis]}
   {::rain-axis (-> (quickthing/primary-axis [[0 ;; negative days are cut off!
                                               0.0] ;; least amount of rain is zero..
-                                             [day-num-max
+                                             [num-days
                                               (-> day-rain
                                                   :y
                                                   :max)]]
@@ -314,7 +292,7 @@
             height
             scale
             margin-frac
-            day-num-max
+            num-days
             day-d18O]}]
   {::pco/input  [::width
                  ::height
@@ -325,13 +303,13 @@
                                    :min]}]}]
    ::pco/output [::d18O-axis]}
   (println (str "Number of Daus"
-                day-num-max))
+                num-days))
   {::d18O-axis (-> (quickthing/secondary-axis [[0  ;; negative days are cut off!
                                                 (-> day-d18O
                                                     :y
                                                     :min
                                                     (* 1.2))]
-                                               [day-num-max
+                                               [num-days
                                                 (-> day-d18O
                                                     :y
                                                     :max)]]
@@ -353,28 +331,31 @@
                               :visible]
                              true))})
 
+(pco/defresolver $year-ticks
+  [{::keys [jan1st-days]}]
+  {::pco/input  [{:jan1st-days [:year|
+                                :jan1st|
+                                :days-from-day-zero|]}]
+   ::pco/output [::year-ticks]}
+  {::year-ticks (:days-from-day-zero jan1st-days)})
+
 (pco/defresolver $grid-layer
   [{::keys [width
             height
             scale
             margin-frac
-            day-num-max
-            cycle-start-value
-            cycle-length
-            cycle-phase
-            day-num-max]}]
+            num-days
+            jan1st-day-to-year]}]
   {::pco/input  [::width
                  ::height
                  ::scale
                  ::margin-frac
-                 ::day-num-max
-                 ::cycle-start-value
-                 ::cycle-length
-                 ::cycle-phase]
+                 ::num-days
+                 ::jan1st-day-to-year]
    ::pco/output [::grid-layer]}
   {::grid-layer (-> (quickthing/primary-axis [[0 ;; negative days are cut off!
                                                0.0]
-                                              [day-num-max
+                                              [num-days
                                                1.0]]
                                              {:width       width
                                               :height      height
@@ -389,14 +370,10 @@
                               false)
                     (assoc-in [:x-axis
                                :label]
-                              (thi.ng.geom.viz.core/default-svg-label #(+ cycle-start-value
-                                                                          (/ %
-                                                                             cycle-length))))
+                              (thi.ng.geom.viz.core/default-svg-label jan1st-day-to-year))
                     (assoc-in [:x-axis
                                :major]
-                              (range cycle-phase ;; TODO: If plot doesn't start at day 0 FIX
-                                     day-num-max
-                                     cycle-length))
+                              (keys jan1st-day-to-year))
                     (assoc-in [:y-axis
                                :major]
                               [])
@@ -405,11 +382,11 @@
 
 (pco/defresolver $rain-layer
   [{::keys [width
-            day-num-max
+            num-days
             rain-axis
             day-rain]}]
   {::pco/input  [::width
-                 ::day-num-max
+                 ::num-days
                  ::rain-axis
                  {::day-rain [:xy-nonil|]}]
    ::pco/output [::rain-layer]}
@@ -420,7 +397,7 @@
                             #(into %
                                    (quickthing/bars (:xy-nonil| day-rain)
                                                     {:attribs {:stroke-width (/ width
-                                                                                day-num-max)
+                                                                                num-days)
                                                                :stroke       "#000000"}})))
                     #_
                     (update :data
@@ -802,7 +779,7 @@
             height
             scale
             margin-frac
-            day-num-max
+            num-days
             day-above
             day-below
             ]}]
@@ -810,6 +787,7 @@
                  ::height
                  ::scale
                  ::margin-frac
+                 ::num-days
                  {::day-above [{:x [:max]}
                                {:y [:max]}]}
                  {::day-below [#_{:x [:max]} ;; should be the same
@@ -817,7 +795,7 @@
    ::pco/output [::index-axis]}
   {::index-axis (-> (quickthing/primary-axis [[0
                                                0.0] ;; index min is always zero
-                                              [day-num-max
+                                              [num-days
                                                (max (-> day-above
                                                         :y
                                                         :max)
@@ -853,29 +831,25 @@
             day-below
             width ;; needs default??
             index-axis
-            day-num-min
-            day-num-max]}]
+            num-days]}]
   {::pco/input  [{::day-above [:xy-nonil|]}
                  {::day-below [:xy-nonil|]}
                  ::width ;; needs default??
                  ::index-axis
-                 ::day-num-min
-                 ::day-num-max]
+                 ::num-days]
    ::pco/output [::index-layer]}
   {::index-layer (-> index-axis
                      (update :data
                              #(into %
                                     (quickthing/bars (:xy-nonil| day-below)
                                                      {:attribs {:stroke-width (/ width
-                                                                                 (- day-num-max
-                                                                                    day-num-min))
+                                                                                 num-days)
                                                                 :stroke       winter-color}})))
                      (update :data
                              #(into %
                                     (quickthing/bars (:xy-nonil| day-above)
                                                      {:attribs {:stroke-width (/ width
-                                                                                 (- day-num-max
-                                                                                    day-num-min))
+                                                                                 num-days)
                                                                 :stroke       summer-color}})))
                      viz/svg-plot2d-cartesian)})
 
@@ -1122,12 +1096,14 @@
 (pco/defresolver $isogsm-rain-d18O-subplot
   [{::keys [width
             height
+            rain-axis
             d18O-layer
             isogsm-vapor-d18O-layer
             isogsm-rain-d18O-layer
             rain-subplot]}]
   {::pco/output [{::isogsm-rain-d18O-subplot [::hiccup]}]}
   {::isogsm-rain-d18O-subplot {::hiccup (-> (svg/group {}
+                                                       rain-axis
                                                        isogsm-vapor-d18O-layer
                                                        isogsm-rain-d18O-layer
                                                        d18O-layer)
@@ -1397,9 +1373,9 @@
 
 (def $env$
   (pci/register {::p.a.eql/parallel? true}
-                [$resolvers$
-                 kxygk.mathom.core/$resolvers$
-                 airport/$resolvers$]))
+                (pathmore/dedupe-resolvers [$resolvers$
+                                            kxygk.mathom.core/$resolvers$
+                                            airport/$resolvers$])))
 
 (pco/defresolver $index-d18O-big-events-subplot
   [{::keys [width
